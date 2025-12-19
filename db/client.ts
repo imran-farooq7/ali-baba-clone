@@ -11,6 +11,7 @@ export const createUser = (data: {
   email: string;
   name: string;
   type: string;
+  company: string;
 }) => prisma.user.create({ data });
 
 export const getBriefsByBrand = (brandId: string) =>
