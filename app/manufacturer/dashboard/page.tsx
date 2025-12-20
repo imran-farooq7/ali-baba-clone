@@ -2,7 +2,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import ManufacturerDashboardLayout from "@/components/manufacturer/ManufacturerDashboardLayout";
 import ManufacturerBriefList from "@/components/manufacturer/ManufacturerBriefList";
-import ManufacturerProposalList from "@/components/manufacturer/ManufacturerProposalList";
 import {
   Briefcase,
   TrendingUp,
@@ -17,6 +16,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/db/client";
 import ManufacturerStatsCard from "@/components/manufacturer/ManufacturerStatsCard";
+import ManufacturerProposalList from "@/components/manufacturer/ManufacturerProposalList";
 
 export default async function ManufacturerDashboardPage() {
   const user = await getCurrentUser();
@@ -31,11 +31,16 @@ export default async function ManufacturerDashboardPage() {
     prisma.brief.findMany({
       where: {
         status: "PUBLISHED",
+        brand: {
+          company: {
+            not: null,
+          },
+        },
         // Add location/category matching logic here
       },
       include: {
         brand: {
-          select: { name: true, company: true },
+          select: { name: true, company: true, id: true },
         },
         proposals: {
           where: { manufacturerId: user.id },
@@ -73,21 +78,21 @@ export default async function ManufacturerDashboardPage() {
   // Calculate stats
   const stats = {
     totalProposals: proposals.length,
-    acceptedProposals: proposals.filter((p) => p.status === "accepted").length,
+    acceptedProposals: proposals.filter((p) => p.status === "ACCEPTED").length,
     pendingProposals: proposals.filter(
-      (p) => p.status === "pending" || p.status === "submitted"
+      (p) => p.status === "PENDING" || p.status === "SUBMITTED"
     ).length,
     successRate:
       proposals.length > 0
         ? Math.round(
-            (proposals.filter((p) => p.status === "accepted").length /
+            (proposals.filter((p) => p.status === "ACCEPTED").length /
               proposals.length) *
               100
           )
         : 0,
     availableBriefs: briefs.length,
     estimatedRevenue: proposals
-      .filter((p) => p.status === "accepted")
+      .filter((p) => p.status === "ACCEPTED")
       .reduce((acc, p) => acc + p.price, 0),
   };
 

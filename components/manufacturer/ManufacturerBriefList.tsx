@@ -28,14 +28,13 @@ interface Brief {
   budget: number;
   quantity: number;
   status: Status;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date;
+  updatedAt: Date;
   location?: string;
-  timelineDays: number;
   brand: {
     id: string;
     name: string;
-    company: string;
+    company: string | null;
   };
   eligibilityScore?: number;
   proposals?: Array<{
@@ -63,36 +62,6 @@ export default function ManufacturerBriefList({
   >("newest");
 
   // Filter briefs
-  const filteredBriefs = briefs
-    .filter((brief) => brief.status === "PUBLISHED") // Only show published briefs
-    .filter(
-      (brief) =>
-        selectedCategory === "all" || brief.category === selectedCategory
-    )
-    .filter((brief) => {
-      if (selectedBudget === "all") return true;
-      if (selectedBudget === "under-10k") return brief.budget < 10000;
-      if (selectedBudget === "10k-50k")
-        return brief.budget >= 10000 && brief.budget <= 50000;
-      if (selectedBudget === "over-50k") return brief.budget > 50000;
-      return true;
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case "newest":
-          return (
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          );
-        case "budget-high":
-          return b.budget - a.budget;
-        case "budget-low":
-          return a.budget - b.budget;
-        case "deadline":
-          return a.timelineDays - b.timelineDays;
-        default:
-          return 0;
-      }
-    });
 
   // Get unique categories
   const categories = Array.from(new Set(briefs.map((b) => b.category)));
@@ -133,7 +102,6 @@ export default function ManufacturerBriefList({
               Available Briefs
             </h2>
             <p className="text-sm text-gray-500">
-              {filteredBriefs.length} briefs available •{" "}
               {briefs.filter((b) => b.status === "PUBLISHED").length} active
             </p>
           </div>
@@ -179,7 +147,7 @@ export default function ManufacturerBriefList({
       </div>
 
       {/* Briefs grid */}
-      {filteredBriefs.length === 0 ? (
+      {briefs.length === 0 ? (
         <div className="p-12 text-center">
           <Target className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-4 text-sm font-medium text-gray-900">
@@ -194,7 +162,7 @@ export default function ManufacturerBriefList({
       ) : (
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredBriefs.map((brief) => {
+            {briefs.map((brief) => {
               const eligibilityScore = calculateEligibility(brief);
               const alreadySubmitted = hasSubmittedProposal(brief);
 
@@ -235,10 +203,6 @@ export default function ManufacturerBriefList({
                     <div className="flex items-center text-sm text-gray-600">
                       <Package className="h-4 w-4 mr-2 text-gray-400" />
                       <span>{brief.quantity.toLocaleString()} units</span>
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-                      <span>{brief.timelineDays} days timeline</span>
                     </div>
                     {brief.location && (
                       <div className="flex items-center text-sm text-gray-600">

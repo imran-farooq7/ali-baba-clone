@@ -21,6 +21,13 @@ enum Status {
   CANCELLED
 }
 
+enum ProposalStatus {
+  PENDING
+  SUBMITTED
+  ACCEPTED
+  REJECTED
+}
+
 model User {
   id                 String   @id @default(cuid())
   email              String   @unique
@@ -74,15 +81,15 @@ model Brief {
 }
 
 model Proposal {
-  id             String @id @default(cuid())
+  id             String         @id @default(cuid())
   message        String
   price          Int
   timeline       Int // days
-  status         String @default("pending") // pending, accepted, rejected
+  status         ProposalStatus // pending, accepted, rejected
   briefId        String
-  brief          Brief  @relation(fields: [briefId], references: [id])
+  brief          Brief          @relation(fields: [briefId], references: [id])
   manufacturerId String
-  manufacturer   User   @relation(fields: [manufacturerId], references: [id])
+  manufacturer   User           @relation(fields: [manufacturerId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
