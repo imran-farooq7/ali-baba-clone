@@ -1,7 +1,6 @@
 // app/(manufacturer)/dashboard/page.tsx
 import { getCurrentUser } from "@/lib/auth";
 import ManufacturerDashboardLayout from "@/components/manufacturer/ManufacturerDashboardLayout";
-import ManufacturerStatsCard from "@/components/manufacturer/ManufacturerStatsCard";
 import ManufacturerBriefList from "@/components/manufacturer/ManufacturerBriefList";
 import ManufacturerProposalList from "@/components/manufacturer/ManufacturerProposalList";
 import {
@@ -17,6 +16,7 @@ import {
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/db/client";
+import ManufacturerStatsCard from "@/components/manufacturer/ManufacturerStatsCard";
 
 export default async function ManufacturerDashboardPage() {
   const user = await getCurrentUser();
