@@ -3,12 +3,11 @@ import { getBriefsByBrand } from "@/db/client";
 import BriefCreationForm from "@/components/brand/BriefCreationForm";
 import BriefList from "@/components/brand/BriefList";
 import StatsCard from "@/components/dashboard/StatsCard";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
 
 export default async function BrandDashboard() {
-  const supabase = await createClient();
-  const user = (await supabase.auth.getUser()).data.user!;
-  const briefs = await getBriefsByBrand(user.id);
+  const user = await getCurrentUser();
+  const briefs = await getBriefsByBrand(user!.id);
 
   const stats = {
     totalBriefs: briefs.length,
@@ -27,7 +26,7 @@ export default async function BrandDashboard() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600">Welcome back, {user.name}</p>
+          <p className="text-gray-600">Welcome back, {user!.name}</p>
         </div>
 
         {/* Stats */}
@@ -44,7 +43,7 @@ export default async function BrandDashboard() {
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow p-6 mb-6">
               <h2 className="text-xl font-semibold mb-4">Create New Brief</h2>
-              <BriefCreationForm userId={user.id} />
+              <BriefCreationForm userId={user!.id} />
             </div>
 
             {/* Brief List */}
