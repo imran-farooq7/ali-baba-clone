@@ -22,14 +22,26 @@ enum Status {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
-  type      String // "brand" or "manufacturer"
-  company   String?
-  avatar    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  name               String
+  type               String // "brand" or "manufacturer"
+  company            String?
+  avatar             String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  capabilities       String[] // e.g., ["CNC Machining", "3D Printing"]
+  certifications     String[] // e.g., ["ISO 9001", "CE Marking"]
+  minOrderQuantity   Int? // Minimum order quantity
+  maxOrderQuantity   Int? // Maximum order quantity
+  productionCapacity Int? // Monthly production capacity
+  verified           Boolean  @default(false)
+
+  // Additional fields
+  website       String?
+  foundedYear   Int?
+  employeeCount String? // e.g., "11-50"
+  locations     String[]
 
   // Relationships
   briefs           Brief[]
