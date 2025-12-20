@@ -51,7 +51,7 @@ export default async function BrandDashboard() {
               <div className="p-6 border-b">
                 <h2 className="text-xl font-semibold">Your Briefs</h2>
               </div>
-              <BriefList briefs={briefs} brandId={briefs[1].brandId} />
+              <BriefList briefs={briefs} brandId={user?.id!} />
             </div>
           </div>
 
