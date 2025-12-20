@@ -11,8 +11,8 @@ export default async function BrandDashboard() {
 
   const stats = {
     totalBriefs: briefs.length,
-    activeBriefs: briefs.filter((b) => b.status === "published").length,
-    completed: briefs.filter((b) => b.status === "completed").length,
+    activeBriefs: briefs.filter((b) => b.status === "PUBLISHED").length,
+    completed: briefs.filter((b) => b.status === "COMPLETED").length,
     pendingProposals: briefs.reduce(
       (acc, b) =>
         acc + b.proposals.filter((p) => p.status === "pending").length,
@@ -51,7 +51,7 @@ export default async function BrandDashboard() {
               <div className="p-6 border-b">
                 <h2 className="text-xl font-semibold">Your Briefs</h2>
               </div>
-              <BriefList briefs={briefs} />
+              <BriefList briefs={briefs} brandId={briefs[1].brandId} />
             </div>
           </div>
 

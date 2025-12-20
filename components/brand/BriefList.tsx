@@ -15,6 +15,7 @@ import {
 import Link from "next/link";
 import { useState } from "react";
 import BriefStatusBadge from "./BriefStatusBadge";
+import { Status } from "@/app/generated/prisma/enums";
 
 interface Brief {
   id: string;
@@ -23,9 +24,9 @@ interface Brief {
   category: string;
   budget: number;
   quantity: number;
-  status: "draft" | "published" | "matched" | "completed" | "cancelled";
-  createdAt: string;
-  updatedAt: string;
+  status: Status;
+  createdAt: Date;
+  updatedAt: Date;
   proposals: Array<{
     id: string;
     status: string;
@@ -127,7 +128,7 @@ export default function BriefList({ briefs, brandId }: BriefListProps) {
             <h2 className="text-xl font-semibold text-gray-900">Your Briefs</h2>
             <p className="text-sm text-gray-500">
               {briefs.length} brief{briefs.length !== 1 ? "s" : ""} •{" "}
-              {briefs.filter((b) => b.status === "published").length} active
+              {briefs.filter((b) => b.status === "PUBLISHED").length} active
             </p>
           </div>
 
@@ -269,7 +270,7 @@ export default function BriefList({ briefs, brandId }: BriefListProps) {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <div className="shrink-0 h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
                         <Briefcase className="h-5 w-5 text-blue-600" />
                       </div>
                       <div className="ml-4">
@@ -330,7 +331,7 @@ export default function BriefList({ briefs, brandId }: BriefListProps) {
                       >
                         <Eye className="h-4 w-4" />
                       </Link>
-                      {brief.status === "draft" && (
+                      {brief.status === "DRAFT" && (
                         <>
                           <Link
                             href={`/brand/briefs/${brief.id}/edit`}
@@ -350,7 +351,7 @@ export default function BriefList({ briefs, brandId }: BriefListProps) {
                           </button>
                         </>
                       )}
-                      {brief.status === "published" && (
+                      {brief.status === "PUBLISHED" && (
                         <button
                           onClick={() =>
                             handleUpdateStatus(brief.id, "cancelled")

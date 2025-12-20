@@ -1,4 +1,4 @@
-import { PrismaClient } from "@/app/generated/prisma/client";
+import { PrismaClient, Status } from "@/app/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
@@ -28,7 +28,8 @@ export const createBrief = (data: {
   budget: number;
   quantity: number;
   brandId: string;
+  status: Status;
 }) => prisma.brief.create({ data });
 
-export const updateBriefStatus = (id: string, status: string) =>
+export const updateBriefStatus = (id: string, status: Status) =>
   prisma.brief.update({ where: { id }, data: { status } });

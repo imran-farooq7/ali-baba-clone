@@ -1,37 +1,38 @@
 // components/brand/BriefStatusBadge.tsx
+import { Status } from "@/app/generated/prisma/enums";
 import { AlertCircle, CheckCircle, Clock, EyeOff, XCircle } from "lucide-react";
 
 interface BriefStatusBadgeProps {
-  status: "draft" | "published" | "matched" | "completed" | "cancelled";
+  status: Status;
   size?: "sm" | "md" | "lg";
 }
 
 const statusConfig = {
-  draft: {
+  DRAFT: {
     label: "Draft",
     icon: EyeOff,
     color: "bg-gray-100 text-gray-800",
     iconColor: "text-gray-500",
   },
-  published: {
+  PUBLISHED: {
     label: "Published",
     icon: Clock,
     color: "bg-blue-100 text-blue-800",
     iconColor: "text-blue-500",
   },
-  matched: {
+  MATCHED: {
     label: "Matched",
     icon: AlertCircle,
     color: "bg-yellow-100 text-yellow-800",
     iconColor: "text-yellow-500",
   },
-  completed: {
+  COMPLETED: {
     label: "Completed",
     icon: CheckCircle,
     color: "bg-green-100 text-green-800",
     iconColor: "text-green-500",
   },
-  cancelled: {
+  CANCELLED: {
     label: "Cancelled",
     icon: XCircle,
     color: "bg-red-100 text-red-800",
