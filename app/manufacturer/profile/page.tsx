@@ -1,10 +1,10 @@
 // app/(manufacturer)/profile/page.tsx
 import { getCurrentUser } from "@/lib/auth";
 import ManufacturerDashboardLayout from "@/components/manufacturer/ManufacturerDashboardLayout";
-import CapabilitySetupForm from "@/components/manufacturer/CapabilitySetupForm";
 import CertificationUpload from "@/components/manufacturer/CertificationUpload";
 import { AlertCircle, CheckCircle } from "lucide-react";
 import { redirect } from "next/navigation";
+import CapabilitySetupForm from "@/components/manufacturer/CapabilitySetupForm";
 
 export default async function ManufacturerProfilePage() {
   const user = await getCurrentUser();
