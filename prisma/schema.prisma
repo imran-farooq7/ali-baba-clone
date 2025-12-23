@@ -43,12 +43,19 @@ model User {
   maxOrderQuantity   Int? // Maximum order quantity
   productionCapacity Int? // Monthly production capacity
   verified           Boolean  @default(false)
+  locations          String[] // Manufacturing locations
+  industries         String[] // Industries served
+  description        String? // This field is optional
+
+  // JSON fields for detailed storage
+  capabilityDetails    Json? // Detailed capability information
+  certificationDetails Json? // Detailed certification information
 
   // Additional fields
   website       String?
   foundedYear   Int?
   employeeCount String? // e.g., "11-50"
-  locations     String[]
+  metadata      Json? // Additional metadata
 
   // Relationships
   briefs           Brief[]
