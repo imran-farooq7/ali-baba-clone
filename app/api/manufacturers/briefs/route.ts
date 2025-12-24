@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
 
-    if (!user || user.type !== "manufacturer") {
+    if (!user || user.type !== "MANUFACTURER") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

@@ -8,7 +8,7 @@ import { prisma } from "@/db/client";
 export default async function ManufacturerBriefsPage() {
   const user = await getCurrentUser();
 
-  if (!user || user.type !== "manufacturer") {
+  if (!user || user.type !== "MANUFACTURER") {
     redirect("/auth/login");
   }
 

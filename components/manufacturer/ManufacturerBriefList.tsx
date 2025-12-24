@@ -1,24 +1,18 @@
 // components/manufacturer/ManufacturerBriefList.tsx
 "use client";
 
-import { useState } from "react";
+import { BriefStatus } from "@/app/generated/prisma/enums";
+import { formatDistanceToNow } from "date-fns";
 import {
-  Eye,
-  DollarSign,
-  Package,
-  Calendar,
-  MapPin,
-  Clock,
-  Target,
   CheckCircle,
-  XCircle,
-  Filter,
-  TrendingUp,
-  Users,
+  Clock,
+  DollarSign,
+  MapPin,
+  Package,
+  Target,
 } from "lucide-react";
 import Link from "next/link";
-import { formatDistanceToNow } from "date-fns";
-import { Status } from "@/app/generated/prisma/enums";
+import { useState } from "react";
 
 interface Brief {
   id: string;
@@ -27,16 +21,16 @@ interface Brief {
   category: string;
   budget: number;
   quantity: number;
-  status: Status;
+  status: BriefStatus;
   createdAt: Date;
   updatedAt: Date;
-  location?: string;
+  location?: string | null;
   brand: {
     id: string;
     name: string;
     company: string | null;
   };
-  eligibilityScore?: number;
+  eligibilityScore?: number | null;
   proposals?: Array<{
     id: string;
     status: string;

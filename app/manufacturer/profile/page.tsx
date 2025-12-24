@@ -9,7 +9,7 @@ import CapabilitySetupForm from "@/components/manufacturer/CapabilitySetupForm";
 export default async function ManufacturerProfilePage() {
   const user = await getCurrentUser();
 
-  if (!user || user.type !== "manufacturer") {
+  if (!user || user.type !== "MANUFACTURER") {
     redirect("/auth/login");
   }
 

@@ -1,9 +1,9 @@
 // components/brand/BriefStatusBadge.tsx
-import { Status } from "@/app/generated/prisma/enums";
+import { BriefStatus } from "@/app/generated/prisma/enums";
 import { AlertCircle, CheckCircle, Clock, EyeOff, XCircle } from "lucide-react";
 
 interface BriefStatusBadgeProps {
-  status: Status;
+  status: BriefStatus;
   size?: "sm" | "md" | "lg";
 }
 
@@ -37,6 +37,12 @@ const statusConfig = {
     icon: XCircle,
     color: "bg-red-100 text-red-800",
     iconColor: "text-red-500",
+  },
+  ARCHIVED: {
+    label: "Archived",
+    icon: EyeOff,
+    color: "bg-gray-100 text-gray-800",
+    iconColor: "text-gray-500",
   },
 } as const;
 

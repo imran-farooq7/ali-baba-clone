@@ -1,12 +1,11 @@
 // components/auth/LoginForm.tsx
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react";
-import Link from "next/link";
-import { createBrowserClient } from "@supabase/ssr";
 import { createClient } from "@/lib/supabase/client";
+import { Eye, EyeOff, Lock, LogIn, Mail } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function LoginForm() {
   const router = useRouter();
