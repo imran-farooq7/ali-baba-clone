@@ -5,7 +5,7 @@ import { prisma } from "@/db/client";
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser();
@@ -14,7 +14,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const briefId = params.id;
+    const { id: briefId } = await params;
 
     // Check if brief exists and belongs to user
     const brief = await prisma.brief.findUnique({

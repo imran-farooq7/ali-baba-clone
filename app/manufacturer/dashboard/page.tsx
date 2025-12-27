@@ -21,7 +21,7 @@ import ManufacturerProposalList from "@/components/manufacturer/ManufacturerProp
 export default async function ManufacturerDashboardPage() {
   const user = await getCurrentUser();
 
-  if (!user || user.type !== "manufacturer") {
+  if (!user || user.type !== "MANUFACTURER") {
     redirect("/auth/login");
   }
 
@@ -80,7 +80,7 @@ export default async function ManufacturerDashboardPage() {
     totalProposals: proposals.length,
     acceptedProposals: proposals.filter((p) => p.status === "ACCEPTED").length,
     pendingProposals: proposals.filter(
-      (p) => p.status === "PENDING" || p.status === "SUBMITTED"
+      (p) => p.status === "UNDER_REVIEW" || p.status === "SUBMITTED"
     ).length,
     successRate:
       proposals.length > 0
