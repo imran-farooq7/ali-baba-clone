@@ -1,4 +1,5 @@
 // app/(brand)/proposals/[id]/page.tsx
+import BrandDashboardLayout from "@/components/brand/BrandDashboardLayout";
 import ProposalDetail from "@/components/proposals/proposal-details";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
