@@ -14,6 +14,7 @@ datasource db {
 }
 
 // ===================== ENUMS =====================
+// (Your existing enums remain the same)
 enum UserType {
   BRAND
   MANUFACTURER
@@ -50,63 +51,50 @@ enum MessageType {
 
 // ===================== MODELS =====================
 model User {
-  id String @id @default(cuid())
-
-  // Auth & Basic Info
-  email   String   @unique
-  name    String
-  type    UserType
-  avatar  String?
-  company String?
-  website String?
-
-  // Brand-specific fields
-  preferredCategories String[] @default([])
-
-  // Manufacturer-specific fields
-  description        String?
-  capabilities       String[] @default([])
-  certifications     String[] @default([])
-  minOrderQuantity   Int?
-  maxOrderQuantity   Int?
-  productionCapacity Int?
-  locations          String[] @default([])
-  industries         String[] @default([])
-  verified           Boolean  @default(false)
-
-  // Capability details (JSON for complex data)
-  capabilityDetails    Json? // Detailed capability information
-  certificationDetails Json? // Detailed certification information
-  metadata             Json? // Additional metadata
-
-  // Timestamps
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  email                String   @unique
+  name                 String
+  type                 UserType
+  avatar               String?
+  company              String?
+  website              String?
+  preferredCategories  String[] @default([])
+  description          String?
+  capabilities         String[] @default([])
+  certifications       String[] @default([])
+  minOrderQuantity     Int?
+  maxOrderQuantity     Int?
+  productionCapacity   Int?
+  locations            String[] @default([])
+  industries           String[] @default([])
+  verified             Boolean  @default(false)
+  capabilityDetails    Json?
+  certificationDetails Json?
+  metadata             Json?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   // ================== RELATIONS ==================
   // As Brand
   createdBriefs     Brief[]    @relation("BrandBriefs")
   receivedProposals Proposal[] @relation("BrandProposals")
-  brandMessages     Message[]  @relation("BrandMessages")
 
   // As Manufacturer
-  receivedBriefs       Brief[]    @relation("ManufacturerBriefs")
-  sentProposals        Proposal[] @relation("ManufacturerProposals")
-  manufacturerMessages Message[]  @relation("ManufacturerMessages")
-
-  // Chats (both sides)
-  sentMessages     Message[] @relation("SentMessages")
-  receivedMessages Message[] @relation("ReceivedMessages")
+  receivedBriefs Brief[]    @relation("ManufacturerBriefs")
+  sentProposals  Proposal[] @relation("ManufacturerProposals")
 
   // Bookmarks
   bookmarkedManufacturers User[]  @relation("ManufacturerBookmarks")
   bookmarkedBy            User[]  @relation("ManufacturerBookmarks")
   bookmarkedBriefs        Brief[] @relation("BriefBookmarks")
 
+  // Chats (Updated)
+  participants Participant[] // User is part of conversations
+  sentMessages Message[]     @relation("SentMessages") // Messages they sent
+
   // AI Assistant Logs
   aiAssistantLogs AiAssistantLog[]
   bookmarks       Bookmark[]
-  messages        Message[]
 
   // Indexes
   @@index([type])
@@ -116,7 +104,7 @@ model User {
 }
 
 model Brief {
-  id                    String   @id @default(cuid())
+  id                    String           @id @default(cuid())
   title                 String
   description           String
   aiEnhancedDescription String?
@@ -127,40 +115,30 @@ model Brief {
   budgetRangeMax        Float?
   timelineDays          Int
   location              String?
-  requirements          Json // JSON array of requirements
-  attachments           String[] // Attachment URLs
+  requirements          Json
+  attachments           String[]
+  status                BriefStatus      @default(DRAFT)
+  eligibilityScore      Int?
+  proposalsCount        Int              @default(0)
+  viewsCount            Int              @default(0)
+  aiSuggestions         Json?
+  bestProposalId        String?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  publishedAt           DateTime?
+  expiresAt             DateTime?
+  brandId               String
+  brand                 User             @relation("BrandBriefs", fields: [brandId], references: [id])
+  manufacturerId        String?
+  manufacturer          User?            @relation("ManufacturerBriefs", fields: [manufacturerId], references: [id])
+  proposals             Proposal[]
+  bookmarkedBy          User[]           @relation("BriefBookmarks")
+  // Relation to Conversation (Optional, for brief-specific chat)
+  conversation          Conversation?    @relation(fields: [conversationId], references: [id])
+  conversationId        String?          @unique
+  bookmarks             Bookmark[]
+  aiAssistantLogs       AiAssistantLog[]
 
-  // Status & Tracking
-  status           BriefStatus @default(DRAFT)
-  eligibilityScore Int?
-  proposalsCount   Int         @default(0)
-  viewsCount       Int         @default(0)
-  aiSuggestions    Json? // AI-generated manufacturer suggestions
-
-  // Matching
-  bestProposalId String?
-
-  // Timestamps
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  publishedAt DateTime?
-  expiresAt   DateTime?
-
-  // ================== RELATIONS ==================
-  brandId String
-  brand   User   @relation("BrandBriefs", fields: [brandId], references: [id])
-
-  manufacturerId String? // Matched manufacturer
-  manufacturer   User?   @relation("ManufacturerBriefs", fields: [manufacturerId], references: [id])
-
-  proposals Proposal[]
-
-  bookmarkedBy    User[]           @relation("BriefBookmarks")
-  messages        Message[]
-  bookmarks       Bookmark[]
-  aiAssistantLogs AiAssistantLog[]
-
-  // Indexes
   @@index([brandId])
   @@index([category])
   @@index([status])
@@ -170,50 +148,37 @@ model Brief {
 }
 
 model Proposal {
-  id String @id @default(cuid())
-
-  // Core proposal details
-  message      String
-  price        Float
-  currency     String   @default("USD")
-  timelineDays Int
-  terms        Json? // Custom terms as JSON
-  attachments  String[] // Array of file URLs
-
-  // Status tracking
-  status      ProposalStatus @default(DRAFT)
-  submittedAt DateTime?
-  reviewedAt  DateTime?
-  decidedAt   DateTime?
-
-  // Counter offer fields
-  counterPrice    Float?
-  counterTimeline Int?
-  counterMessage  String?
-  counterTerms    Json?
-
-  // Timestamps
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // ================== RELATIONS ==================
-  briefId String
-  brief   Brief  @relation(fields: [briefId], references: [id], onDelete: Cascade)
-
-  manufacturerId String
-  manufacturer   User   @relation("ManufacturerProposals", fields: [manufacturerId], references: [id], onDelete: Cascade)
-
-  brandId String
-  brand   User   @relation("BrandProposals", fields: [brandId], references: [id])
-
-  // Counter proposal relationship
+  id                String           @id @default(cuid())
+  message           String
+  price             Float
+  currency          String           @default("USD")
+  timelineDays      Int
+  terms             Json?
+  attachments       String[]
+  status            ProposalStatus   @default(DRAFT)
+  submittedAt       DateTime?
+  reviewedAt        DateTime?
+  decidedAt         DateTime?
+  counterPrice      Float?
+  counterTimeline   Int?
+  counterMessage    String?
+  counterTerms      Json?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  briefId           String
+  brief             Brief            @relation(fields: [briefId], references: [id], onDelete: Cascade)
+  manufacturerId    String
+  manufacturer      User             @relation("ManufacturerProposals", fields: [manufacturerId], references: [id], onDelete: Cascade)
+  brandId           String
+  brand             User             @relation("BrandProposals", fields: [brandId], references: [id])
   counterProposalId String?
   counterProposal   Proposal?        @relation("CounterProposals", fields: [counterProposalId], references: [id])
   originalProposal  Proposal[]       @relation("CounterProposals")
-  messages          Message[]
+  // Relation to Conversation (Optional, for proposal-specific chat)
+  conversation      Conversation?    @relation(fields: [conversationId], references: [id])
+  conversationId    String?          @unique
   aiAssistantLogs   AiAssistantLog[]
 
-  // Indexes
   @@index([briefId])
   @@index([manufacturerId])
   @@index([brandId])
@@ -222,92 +187,95 @@ model Proposal {
   @@map("proposals")
 }
 
-model Message {
-  id String @id @default(cuid())
+// ===================== CHAT SYSTEM MODELS =====================
+model Conversation {
+  id            String        @id @default(cuid())
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  title         String?
+  // Optional links to business entities
+  briefId       String?       @unique
+  brief         Brief?
+  proposalId    String?       @unique
+  proposal      Proposal?
+  // Core chat relations
+  participants  Participant[]
+  messages      Message[]
+  lastMessageAt DateTime?
 
-  // Message content
-  content     String
-  type        MessageType @default(TEXT)
-  attachments String[] // File URLs
-  read        Boolean     @default(false)
-  aiGenerated Boolean     @default(false)
-
-  // Relations
-  senderId String
-  sender   User   @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
-
-  receiverId String
-  receiver   User   @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
-
-  // Context (optional links to briefs/proposals)
-  briefId String?
-  brief   Brief?  @relation(fields: [briefId], references: [id])
-
-  proposalId String?
-  proposal   Proposal? @relation(fields: [proposalId], references: [id])
-
-  // Grouping
-  conversationId String // For grouping messages
-
-  // Timestamps
-  createdAt       DateTime @default(now())
-  brandUsers      User[]   @relation("BrandMessages")
-  manfactureUsers User[]   @relation("ManufacturerMessages")
-  user            User?    @relation(fields: [userId], references: [id])
-  userId          String?
-
-  // Indexes
-  @@index([senderId, receiverId])
-  @@index([conversationId])
-  @@index([createdAt])
-  @@index([briefId])
-  @@index([proposalId])
-  @@map("messages")
+  @@index([lastMessageAt])
 }
 
-model Bookmark {
-  id String @id @default(cuid())
-
-  // Relations
+model Participant {
+  id             String       @id @default(cuid())
   userId         String
-  manufacturerId String? // Bookmarked manufacturer
-  manufacturer   User?   @relation(fields: [manufacturerId], references: [id])
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userRole       UserType // Uses your existing UserType enum
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  lastReadAt     DateTime     @default(now())
 
-  briefId String? // Bookmarked brief
-  brief   Brief?  @relation(fields: [briefId], references: [id])
+  @@unique([userId, conversationId])
+  @@index([conversationId, lastReadAt])
+}
 
-  createdAt DateTime @default(now())
+model Message {
+  id             String       @id @default(cuid())
+  content        String?
+  type           MessageType  @default(TEXT)
+  // File attachment fields
+  fileUrl        String?
+  fileName       String?
+  fileSize       Int?
+  fileType       String?
+  // Status flags
+  isEdited       Boolean      @default(false)
+  isDeleted      Boolean      @default(false)
+  // Core relations
+  senderId       String
+  sender         User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  // Timestamps
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
-  // Constraints
+  // Indexes for performance [citation:2][citation:6]
+  @@index([conversationId, createdAt]) // Optimized for loading chat history
+  @@index([senderId])
+  @@index([createdAt])
+}
+
+// ===================== EXISTING SUPPORTING MODELS =====================
+// (Keep your existing Bookmark and AiAssistantLog models exactly as they are)
+model Bookmark {
+  id             String   @id @default(cuid())
+  userId         String
+  manufacturerId String?
+  manufacturer   User?    @relation(fields: [manufacturerId], references: [id])
+  briefId        String?
+  brief          Brief?   @relation(fields: [briefId], references: [id])
+  createdAt      DateTime @default(now())
+
   @@unique([userId, manufacturerId])
   @@unique([userId, briefId])
   @@map("bookmarks")
 }
 
 model AiAssistantLog {
-  id String @id @default(cuid())
-
-  // AI interaction
-  prompt   String
-  response String
-  metadata Json
-  model    String @default("gemini-2.0-flash")
-
-  // Relations
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Context (optional)
-  briefId String?
-  brief   Brief?  @relation(fields: [briefId], references: [id])
-
+  id         String    @id @default(cuid())
+  prompt     String
+  response   String
+  metadata   Json
+  model      String    @default("gemini-2.0-flash")
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  briefId    String?
+  brief      Brief?    @relation(fields: [briefId], references: [id])
   proposalId String?
   proposal   Proposal? @relation(fields: [proposalId], references: [id])
+  createdAt  DateTime  @default(now())
 
-  // Timestamps
-  createdAt DateTime @default(now())
-
-  // Indexes
   @@index([userId])
   @@index([createdAt])
   @@index([briefId])
