@@ -1,4 +1,4 @@
-// components/proposals/ProposalCreationForm.tsx
+// components/proposals/ProposalCreationForm.tsx - COMPATIBLE VERSION
 "use client";
 
 import { useState, useEffect } from "react";
@@ -16,6 +16,7 @@ import {
   Package,
   TrendingUp,
   Shield,
+  Save,
 } from "lucide-react";
 
 interface Brief {
@@ -35,7 +36,7 @@ interface Brief {
 interface ProposalCreationFormProps {
   briefId: string;
   manufacturerId: string;
-  onSuccess?: () => void;
+  onSuccess?: (proposalId?: string) => void;
   onCancel?: () => void;
 }
 
@@ -54,8 +55,10 @@ export default function ProposalCreationForm({
     price: "",
     timelineDays: "",
     message: "",
-    terms: "",
+    terms:
+      '{"paymentTerms": "50% deposit, 50% on delivery", "warranty": "30 days", "shipping": "FOB Manufacturer"}',
     attachments: [] as string[],
+    status: "DRAFT" as "DRAFT" | "SUBMITTED",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -88,7 +91,7 @@ export default function ProposalCreationForm({
     const newFiles = Array.from(files);
     setFiles((prev) => [...prev, ...newFiles]);
 
-    // In production: Upload to Supabase Storage
+    // In production: Upload to Supabase Storage and get URLs
     const uploadedUrls = newFiles.map((file) => URL.createObjectURL(file));
     setFormData((prev) => ({
       ...prev,
@@ -128,16 +131,15 @@ export default function ProposalCreationForm({
       newErrors.message = "Proposal message is required";
     }
 
-    if (brief && parseFloat(formData.price) > brief.budget * 2) {
-      newErrors.price = "Price is significantly above brief budget";
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (
+    e: React.FormEvent,
+    submitType: "save" | "submit" = "submit"
+  ) => {
     e.preventDefault();
 
     if (!validateForm()) return;
@@ -149,13 +151,12 @@ export default function ProposalCreationForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           briefId,
-          manufacturerId,
+          message: formData.message,
           price: parseFloat(formData.price),
           timelineDays: parseInt(formData.timelineDays),
-          message: formData.message,
-          terms: formData.terms,
+          terms: JSON.parse(formData.terms),
           attachments: formData.attachments,
-          status: "SUBMITTED",
+          status: submitType === "submit" ? "SUBMITTED" : "DRAFT",
         }),
       });
 
@@ -164,9 +165,11 @@ export default function ProposalCreationForm({
       if (response.ok) {
         // Success - redirect or callback
         if (onSuccess) {
-          onSuccess();
-        } else {
+          onSuccess(data.data?.id);
+        } else if (submitType === "submit") {
           router.push(`/manufacturer/proposals/${data.data.id}`);
+        } else {
+          alert("Proposal saved as draft");
         }
       } else {
         setErrors({ submit: data.error || "Failed to submit proposal" });
@@ -217,7 +220,9 @@ export default function ProposalCreationForm({
         <div className="flex justify-between items-start">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">
-              Submit Proposal
+              {formData.status === "DRAFT"
+                ? "Create Proposal"
+                : "Submit Proposal"}
             </h2>
             <p className="text-gray-600 mt-1">For: {brief.title}</p>
             <div className="flex items-center gap-4 mt-2 text-sm">
@@ -247,7 +252,7 @@ export default function ProposalCreationForm({
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="p-6">
+      <form onSubmit={(e) => handleSubmit(e, "submit")} className="p-6">
         <div className="space-y-6">
           {/* Price & Timeline */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -298,12 +303,6 @@ export default function ProposalCreationForm({
                   </span>
                   <span className="font-medium">{margin.toFixed(1)}%</span>
                 </div>
-                {!isWithinBudget && (
-                  <div className="flex items-center text-amber-600 text-sm">
-                    <AlertCircle className="h-3 w-3 mr-1" />
-                    Your price is above the brief budget
-                  </div>
-                )}
               </div>
             </div>
 
@@ -335,11 +334,6 @@ export default function ProposalCreationForm({
                   {errors.timelineDays}
                 </p>
               )}
-
-              <div className="mt-3 flex items-center text-sm text-gray-600">
-                <Clock className="h-3 w-3 mr-1" />
-                <span>Brand requested: {brief.timelineDays} days</span>
-              </div>
             </div>
           </div>
 
@@ -366,29 +360,6 @@ export default function ProposalCreationForm({
             {errors.message && (
               <p className="mt-1 text-sm text-red-600">{errors.message}</p>
             )}
-            <div className="mt-2 text-xs text-gray-500">
-              {formData.message.length}/2000 characters
-            </div>
-          </div>
-
-          {/* Terms & Conditions */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <div className="flex items-center">
-                <Shield className="h-4 w-4 mr-1" />
-                Terms & Conditions
-              </div>
-              <span className="text-xs font-normal text-gray-500">
-                Payment terms, delivery conditions, warranties, etc.
-              </span>
-            </label>
-            <textarea
-              value={formData.terms}
-              onChange={(e) => handleChange("terms", e.target.value)}
-              rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              placeholder="Example: 50% deposit, 50% on delivery. 30-day warranty..."
-            />
           </div>
 
           {/* File Upload */}
@@ -461,31 +432,6 @@ export default function ProposalCreationForm({
             )}
           </div>
 
-          {/* Summary */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <h4 className="font-medium text-gray-900 mb-3">Proposal Summary</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center p-3 bg-white rounded border">
-                <p className="text-sm text-gray-600">Your Price</p>
-                <p className="text-lg font-semibold text-gray-900">
-                  ${parseFloat(formData.price || "0").toLocaleString()}
-                </p>
-              </div>
-              <div className="text-center p-3 bg-white rounded border">
-                <p className="text-sm text-gray-600">Timeline</p>
-                <p className="text-lg font-semibold text-gray-900">
-                  {formData.timelineDays || "0"} days
-                </p>
-              </div>
-              <div className="text-center p-3 bg-white rounded border">
-                <p className="text-sm text-gray-600">Status</p>
-                <p className="text-lg font-semibold text-green-600">
-                  Ready to Submit
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* Error message */}
           {errors.submit && (
             <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -494,26 +440,38 @@ export default function ProposalCreationForm({
           )}
 
           {/* Action buttons */}
-          <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
-            {onCancel ? (
+          <div className="flex justify-between gap-3 pt-6 border-t border-gray-200">
+            <div className="flex gap-3">
+              {onCancel ? (
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md hover:bg-gray-50"
+                  disabled={submitting}
+                >
+                  Cancel
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => router.back()}
+                  className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md hover:bg-gray-50"
+                  disabled={submitting}
+                >
+                  Back
+                </button>
+              )}
+
               <button
                 type="button"
-                onClick={onCancel}
-                className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md hover:bg-gray-50"
+                onClick={(e) => handleSubmit(e, "save")}
                 disabled={submitting}
+                className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md hover:bg-gray-50 disabled:opacity-50 flex items-center gap-2"
               >
-                Cancel
+                <Save className="h-4 w-4" />
+                Save Draft
               </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => router.back()}
-                className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md hover:bg-gray-50"
-                disabled={submitting}
-              >
-                Back
-              </button>
-            )}
+            </div>
 
             <button
               type="submit"

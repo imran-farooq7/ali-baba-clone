@@ -1,4 +1,4 @@
-// components/proposals/CounterOfferForm.tsx
+// components/proposals/CounterOfferForm.tsx - UPDATED FOR YOUR API
 "use client";
 
 import { useState } from "react";
@@ -16,11 +16,7 @@ interface CounterOfferFormProps {
     id: string;
     price: number;
     timelineDays: number;
-    message: string;
-    brief: {
-      budget: number;
-      timelineDays: number;
-    };
+    terms: any;
   };
   onSuccess: () => void;
   onCancel: () => void;
@@ -32,10 +28,10 @@ export default function CounterOfferForm({
   onCancel,
 }: CounterOfferFormProps) {
   const [formData, setFormData] = useState({
-    price: proposal.price.toString(),
-    timelineDays: proposal.timelineDays.toString(),
-    message: "",
-    terms: "",
+    counterPrice: proposal.price.toString(),
+    counterTimeline: proposal.timelineDays.toString(),
+    counterMessage: "",
+    counterTerms: JSON.stringify(proposal.terms || {}, null, 2),
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -50,7 +46,7 @@ export default function CounterOfferForm({
 
   // Calculate price difference
   const calculatePriceDiff = () => {
-    const newPrice = parseFloat(formData.price || "0");
+    const newPrice = parseFloat(formData.counterPrice || "0");
     return ((newPrice - proposal.price) / proposal.price) * 100;
   };
 
@@ -58,16 +54,21 @@ export default function CounterOfferForm({
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.price || parseFloat(formData.price) <= 0) {
-      newErrors.price = "Price must be greater than 0";
+    if (!formData.counterPrice || parseFloat(formData.counterPrice) <= 0) {
+      newErrors.counterPrice = "Price must be greater than 0";
     }
 
-    if (!formData.timelineDays || parseInt(formData.timelineDays) <= 0) {
-      newErrors.timelineDays = "Timeline must be specified";
+    if (!formData.counterTimeline || parseInt(formData.counterTimeline) <= 0) {
+      newErrors.counterTimeline = "Timeline must be specified";
     }
 
-    if (!formData.message.trim()) {
-      newErrors.message = "Please explain your counter offer";
+    // Validate JSON for terms
+    if (formData.counterTerms) {
+      try {
+        JSON.parse(formData.counterTerms);
+      } catch {
+        newErrors.counterTerms = "Terms must be valid JSON";
+      }
     }
 
     setErrors(newErrors);
@@ -86,17 +87,20 @@ export default function CounterOfferForm({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          price: parseFloat(formData.price),
-          timelineDays: parseInt(formData.timelineDays),
-          message: formData.message,
-          terms: formData.terms,
+          counterPrice: parseFloat(formData.counterPrice),
+          counterTimeline: parseInt(formData.counterTimeline),
+          counterMessage: formData.counterMessage,
+          counterTerms: formData.counterTerms
+            ? JSON.parse(formData.counterTerms)
+            : {},
         }),
       });
+
+      const data = await response.json();
 
       if (response.ok) {
         onSuccess();
       } else {
-        const data = await response.json();
         setErrors({ submit: data.error || "Failed to submit counter offer" });
       }
     } catch (error) {
@@ -116,7 +120,7 @@ export default function CounterOfferForm({
           Make Counter Offer
         </h3>
         <p className="text-sm text-gray-600 mt-1">
-          Negotiate terms with {proposal.brief.budget.toLocaleString()}
+          Negotiate terms with the manufacturer
         </p>
       </div>
 
@@ -137,7 +141,7 @@ export default function CounterOfferForm({
             <p className="text-xs text-gray-600 mb-1">Your Counter</p>
             <div className="flex items-center justify-between">
               <p className="font-medium">
-                ${parseFloat(formData.price || "0").toLocaleString()}
+                ${parseFloat(formData.counterPrice || "0").toLocaleString()}
               </p>
               {priceDiff !== 0 && (
                 <span
@@ -165,15 +169,15 @@ export default function CounterOfferForm({
               type="number"
               step="0.01"
               min="0"
-              value={formData.price}
-              onChange={(e) => handleChange("price", e.target.value)}
+              value={formData.counterPrice}
+              onChange={(e) => handleChange("counterPrice", e.target.value)}
               className={`pl-10 w-full px-3 py-2 border rounded-md ${
-                errors.price ? "border-red-300" : "border-gray-300"
+                errors.counterPrice ? "border-red-300" : "border-gray-300"
               }`}
             />
           </div>
-          {errors.price && (
-            <p className="mt-1 text-sm text-red-600">{errors.price}</p>
+          {errors.counterPrice && (
+            <p className="mt-1 text-sm text-red-600">{errors.counterPrice}</p>
           )}
         </div>
 
@@ -189,15 +193,17 @@ export default function CounterOfferForm({
             <input
               type="number"
               min="1"
-              value={formData.timelineDays}
-              onChange={(e) => handleChange("timelineDays", e.target.value)}
+              value={formData.counterTimeline}
+              onChange={(e) => handleChange("counterTimeline", e.target.value)}
               className={`pl-10 w-full px-3 py-2 border rounded-md ${
-                errors.timelineDays ? "border-red-300" : "border-gray-300"
+                errors.counterTimeline ? "border-red-300" : "border-gray-300"
               }`}
             />
           </div>
-          {errors.timelineDays && (
-            <p className="mt-1 text-sm text-red-600">{errors.timelineDays}</p>
+          {errors.counterTimeline && (
+            <p className="mt-1 text-sm text-red-600">
+              {errors.counterTimeline}
+            </p>
           )}
         </div>
 
@@ -207,31 +213,33 @@ export default function CounterOfferForm({
             Reason for Counter Offer
           </label>
           <textarea
-            value={formData.message}
-            onChange={(e) => handleChange("message", e.target.value)}
+            value={formData.counterMessage}
+            onChange={(e) => handleChange("counterMessage", e.target.value)}
             rows={3}
             className={`w-full px-3 py-2 border rounded-md ${
-              errors.message ? "border-red-300" : "border-gray-300"
+              errors.counterMessage ? "border-red-300" : "border-gray-300"
             }`}
             placeholder="Explain your counter offer..."
           />
-          {errors.message && (
-            <p className="mt-1 text-sm text-red-600">{errors.message}</p>
-          )}
         </div>
 
         {/* Terms */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Updated Terms (Optional)
+            Updated Terms (JSON)
           </label>
           <textarea
-            value={formData.terms}
-            onChange={(e) => handleChange("terms", e.target.value)}
-            rows={2}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            placeholder="Any changes to payment terms or conditions..."
+            value={formData.counterTerms}
+            onChange={(e) => handleChange("counterTerms", e.target.value)}
+            rows={4}
+            className={`w-full px-3 py-2 border rounded-md font-mono text-sm ${
+              errors.counterTerms ? "border-red-300" : "border-gray-300"
+            }`}
+            placeholder='{"paymentTerms": "50% deposit, 50% on delivery", "warranty": "30 days"}'
           />
+          {errors.counterTerms && (
+            <p className="mt-1 text-sm text-red-600">{errors.counterTerms}</p>
+          )}
         </div>
 
         {/* Error message */}

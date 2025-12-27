@@ -1,4 +1,4 @@
-// components/proposals/AcceptProposalModal.tsx
+// components/proposals/AcceptProposalModal.tsx - UPDATED FOR YOUR API
 "use client";
 
 import { useState } from "react";
@@ -19,12 +19,10 @@ interface AcceptProposalModalProps {
     id: string;
     price: number;
     timelineDays: number;
-    message: string;
-    terms?: string;
+    terms: any;
     manufacturer: {
       company: string;
       name: string;
-      verified: boolean;
     };
     brief: {
       title: string;
@@ -58,10 +56,12 @@ export default function AcceptProposalModal({
         body: JSON.stringify({ notes }),
       });
 
+      const data = await response.json();
+
       if (response.ok) {
         onAccept();
       } else {
-        alert("Failed to accept proposal");
+        alert(data.error || "Failed to accept proposal");
       }
     } catch (error) {
       alert("Network error occurred");
@@ -110,10 +110,17 @@ export default function AcceptProposalModal({
                   Important Notice
                 </h4>
                 <p className="text-sm text-yellow-700 mt-1">
-                  Accepting this proposal creates a binding agreement. Make sure
-                  you've reviewed all terms and are ready to proceed with this
-                  manufacturer.
+                  Accepting this proposal creates a binding agreement. This
+                  action will:
                 </p>
+                <ul className="text-sm text-yellow-700 mt-2 list-disc list-inside">
+                  <li>Mark this proposal as ACCEPTED</li>
+                  <li>Mark the brief as MATCHED</li>
+                  <li>
+                    Automatically reject all other proposals for this brief
+                  </li>
+                  <li>Assign this manufacturer to the brief</li>
+                </ul>
               </div>
             </div>
           </div>
@@ -132,9 +139,6 @@ export default function AcceptProposalModal({
                 <p className="text-2xl font-bold text-gray-900">
                   ${proposal.price.toLocaleString()}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  All inclusive price
-                </p>
               </div>
 
               <div className="p-4 border border-gray-200 rounded-lg">
@@ -146,9 +150,6 @@ export default function AcceptProposalModal({
                 </div>
                 <p className="text-2xl font-bold text-gray-900">
                   {proposal.timelineDays} days
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Production duration
                 </p>
               </div>
 
@@ -162,7 +163,6 @@ export default function AcceptProposalModal({
                 <p className="text-2xl font-bold text-gray-900">
                   {proposal.brief.quantity.toLocaleString()}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">Total units</p>
               </div>
             </div>
           </div>
@@ -181,29 +181,8 @@ export default function AcceptProposalModal({
                   {proposal.manufacturer.name}
                 </p>
               </div>
-              {proposal.manufacturer.verified && (
-                <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">
-                  <CheckCircle className="h-4 w-4" />
-                  Verified Manufacturer
-                </span>
-              )}
             </div>
           </div>
-
-          {/* Terms */}
-          {proposal.terms && (
-            <div className="mb-6 p-4 border border-gray-200 rounded-lg">
-              <div className="flex items-center gap-2 mb-3">
-                <Shield className="h-5 w-5 text-gray-400" />
-                <h4 className="font-medium text-gray-900">Proposed Terms</h4>
-              </div>
-              <div className="prose prose-sm max-w-none">
-                <p className="text-gray-700 whitespace-pre-line">
-                  {proposal.terms}
-                </p>
-              </div>
-            </div>
-          )}
 
           {/* Notes */}
           <div className="mb-6">
