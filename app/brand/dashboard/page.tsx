@@ -15,7 +15,7 @@ export default async function BrandDashboard() {
     completed: briefs.filter((b) => b.status === "COMPLETED").length,
     pendingProposals: briefs.reduce(
       (acc, b) =>
-        acc + b.proposals.filter((p) => p.status === "PENDING").length,
+        acc + b.proposals.filter((p) => p.status === "UNDER_REVIEW").length,
       0
     ),
   };
