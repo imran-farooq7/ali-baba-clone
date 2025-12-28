@@ -61,12 +61,12 @@ export const requireAuth = async () => {
 // Check user role/type
 export const isBrand = async () => {
   const user = await getCurrentUser();
-  return user?.type === "brand";
+  return user?.type === "BRAND";
 };
 
 export const isManufacturer = async () => {
   const user = await getCurrentUser();
-  return user?.type === "manufacturer";
+  return user?.type === "MANUFACTURER";
 };
 
 // Redirect if not authenticated (for middleware)
