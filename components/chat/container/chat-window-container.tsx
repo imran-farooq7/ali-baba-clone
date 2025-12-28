@@ -4,6 +4,7 @@ import { MessageList } from "../ui/message-list";
 import { MessageInput } from "../ui/message-input";
 import { Send } from "lucide-react";
 import { Message } from "@/lib/chat/hooks/chat/use-messages";
+import { ChatHeader } from "../ui/chat-header";
 
 interface ChatWindowContainerProps {
   activeConversation?: any;
