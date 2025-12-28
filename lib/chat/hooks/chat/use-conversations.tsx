@@ -34,7 +34,7 @@ export interface Conversation {
 }
 
 // Factory function for conversations hook
-export const createUseConversations = (currentUserId: string) => {
+export const useConversations = (currentUserId: string) => {
   return () => {
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [isLoading, setIsLoading] = useState(false);

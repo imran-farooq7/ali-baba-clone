@@ -1,4 +1,5 @@
 // components/chat/utils/file-utils.ts
+
 // Pure file-related functions
 export const getFileIconType = (fileType?: string): string => {
   if (!fileType) return "document";
