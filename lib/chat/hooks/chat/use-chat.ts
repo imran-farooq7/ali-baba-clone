@@ -4,7 +4,7 @@ import { useMessages as createUseMessages } from "./use-messages";
 import { useConversations as createConversations } from "./use-conversations";
 
 // Main chat hook factory
-export const createUseChat = (supabaseClient: any, currentUserId: string) => {
+export const useChat = (supabaseClient: any, currentUserId: string) => {
   const useConversations = createConversations(currentUserId);
   const useMessages = createUseMessages(supabaseClient);
 
