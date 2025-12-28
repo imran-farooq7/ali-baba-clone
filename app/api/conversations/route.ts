@@ -1,6 +1,9 @@
 // app/api/conversations/route.ts
 import { getCurrentUser } from "@/lib/auth";
-import { createConversationCreator, getUserConversations } from "@/lib/chat";
+import {
+  createConversationCreator,
+  getUserConversations,
+} from "@/lib/chat/chat";
 import { NextRequest, NextResponse } from "next/server";
 // GET: Get user's conversations
 export const GET = async (request: NextRequest) => {

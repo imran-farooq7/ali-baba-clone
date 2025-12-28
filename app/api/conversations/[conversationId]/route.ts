@@ -1,6 +1,10 @@
 // app/api/chat/[conversationId]/route.ts
 import { getCurrentUser } from "@/lib/auth";
-import { createSendMessage, getConversation, getMessages } from "@/lib/chat";
+import {
+  createSendMessage,
+  getConversation,
+  getMessages,
+} from "@/lib/chat/chat";
 import { NextRequest, NextResponse } from "next/server";
 
 // GET: Get conversation messages
