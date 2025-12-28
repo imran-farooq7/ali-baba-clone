@@ -5,7 +5,7 @@ import { User } from "@/app/generated/prisma/client";
 import { useChat as createUseChat } from "@/lib/chat/hooks/chat/use-chat";
 import { createClient } from "@/lib/supabase/client";
 import { ConversationList } from "../ui/conversation-list";
-import { ChatWindow } from "./chat-window-container";
+import { ChatWindowContainer } from "./chat-window-container";
 
 export const ChatContainer = ({ user }: { user: User }) => {
   const supabaseClient = createClient();
@@ -29,7 +29,7 @@ export const ChatContainer = ({ user }: { user: User }) => {
 
       {/* Main chat area */}
       <div className="col-span-12 md:col-span-8 lg:col-span-9 h-full">
-        <ChatWindow
+        <ChatWindowContainer
           activeConversation={chat.activeConversation}
           messages={chat.messages}
           currentUserId={user?.id || ""}

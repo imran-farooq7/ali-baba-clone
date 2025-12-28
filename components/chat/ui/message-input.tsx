@@ -1,10 +1,11 @@
 // components/chat/ui/message-input.tsx
 import { validateFile } from "@/lib/chat/file-utils";
+import { Message } from "@/lib/chat/hooks/chat/use-messages";
 import { Paperclip, Send, X } from "lucide-react";
 import { FormEvent, useRef, useState } from "react";
 
 interface MessageInputProps {
-  onSendMessage: (content?: string, file?: File) => Promise<void>;
+  onSendMessage: (content?: string, file?: File) => Promise<Message>;
   disabled?: boolean;
 }
 
