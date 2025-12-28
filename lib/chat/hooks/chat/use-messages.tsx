@@ -23,7 +23,7 @@ export interface Message {
 }
 
 // Factory function for messages hook
-export const createUseMessages = (
+export const useMessages = (
   supabaseClient: ReturnType<typeof createClient>
 ) => {
   return (conversationId?: string, currentUserId?: string) => {
