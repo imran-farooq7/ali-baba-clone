@@ -113,9 +113,9 @@ model Brief {
   budget                Float
   budgetRangeMin        Float?
   budgetRangeMax        Float?
-  timelineDays          Int
+  timelineDays          Int?
   location              String?
-  requirements          Json
+  requirements          Json?
   attachments           String[]
   status                BriefStatus      @default(DRAFT)
   eligibilityScore      Int?
