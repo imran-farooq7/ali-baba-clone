@@ -20,11 +20,11 @@ import {
   BarChart,
   TrendingUp,
 } from "lucide-react";
-import FilterSidebar from "@/components/manufacturers/FilterSidebar";
 import CompareButton from "@/components/manufacturers/CompareButton";
 import { useManufacturers } from "@/hooks/useManufacturers";
 import { useCompare } from "@/hooks/useCompare";
 import ManufacturerGrid from "@/components/brand/ManufacturerGrid";
+import FilterSidebar from "@/components/brand/FilterSidebar";
 
 export default function ManufacturerDiscoveryPage() {
   const router = useRouter();
