@@ -1,9 +1,9 @@
 // app/(brand)/manufacturers/[id]/page.tsx
 import CapabilityCard from "@/components/brand/CapabilityCard";
 import CertificationCard from "@/components/brand/CertificationCard";
-import ChatButton from "@/components/chat/ChatButton";
+import RecentBriefs from "@/components/brand/RecentBriefs";
+import ChatButton from "@/components/chat/ui/Chat-button";
 import StatsCard from "@/components/dashboard/StatsCard";
-import RecentBriefs from "@/components/manufacturers/RecentBriefs";
 import ReviewsSection from "@/components/manufacturers/ReviewsSection";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/prisma/prisma";

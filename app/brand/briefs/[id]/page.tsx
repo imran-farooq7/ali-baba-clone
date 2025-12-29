@@ -23,12 +23,12 @@ import {
 import Link from "next/link";
 import { formatDistanceToNow, format } from "date-fns";
 // import BriefActions from "@/components/briefs/BriefActions";
-// import ChatButton from "@/components/chat/ChatButton";
 import { prisma } from "@/prisma/prisma";
 import { BriefStatus } from "@/lib/generated/prisma/enums";
 import BriefStatusBadge from "@/components/brand/BriefStatusBadge";
 import ProposalsSection from "@/components/brand/ProposalsSection";
 import AnalyticsSection from "@/components/brand/AnalyticsSection";
+import ChatButton from "@/components/chat/ui/Chat-button";
 
 interface BriefDetailPageProps {
   params: Promise<{ id: string }>;
@@ -444,12 +444,12 @@ export default async function BriefDetailPage({
                 Quick Actions
               </h2>
               <div className="space-y-3">
-                {/* <ChatButton
+                <ChatButton
                   briefId={brief.id}
                   participants={brief.proposals.map((p) => p.manufacturer.id)}
                   title={`Chat for ${brief.title}`}
                   className="w-full justify-center"
-                /> */}
+                />
 
                 <button className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
                   <Share2 className="h-4 w-4" />
