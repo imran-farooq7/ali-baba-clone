@@ -14,9 +14,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { prisma } from "@/db/prisma";
 import ManufacturerStatsCard from "@/components/manufacturer/ManufacturerStatsCard";
 import ManufacturerProposalList from "@/components/manufacturer/ManufacturerProposalList";
+import { prisma } from "@/prisma/prisma";
 
 export default async function ManufacturerDashboardPage() {
   const user = await getCurrentUser();
