@@ -23,12 +23,12 @@ import {
 import Link from "next/link";
 import { formatDistanceToNow, format } from "date-fns";
 import BriefActions from "@/components/briefs/BriefActions";
-import ProposalsSection from "@/components/briefs/ProposalsSection";
 import AnalyticsSection from "@/components/briefs/AnalyticsSection";
 import ChatButton from "@/components/chat/ChatButton";
 import { prisma } from "@/prisma/prisma";
 import { BriefStatus } from "@/lib/generated/prisma/enums";
 import BriefStatusBadge from "@/components/brand/BriefStatusBadge";
+import ProposalsSection from "@/components/brand/ProposalsSection";
 
 interface BriefDetailPageProps {
   params: Promise<{ id: string }>;
