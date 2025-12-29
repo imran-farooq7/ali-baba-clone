@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { prisma } from "@/db/client";
+import { prisma } from "@/db/prisma";
 import ManufacturerStatsCard from "@/components/manufacturer/ManufacturerStatsCard";
 import ManufacturerProposalList from "@/components/manufacturer/ManufacturerProposalList";
 

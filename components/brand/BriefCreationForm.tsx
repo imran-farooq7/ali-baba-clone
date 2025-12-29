@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Plus, Trash2 } from "lucide-react";
+import toast from "react-hot-toast";
 
 const briefSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters"),
@@ -14,7 +15,7 @@ const briefSchema = z.object({
   budget: z.number().min(100, "Minimum budget is 100"),
   quantity: z.number().min(1, "Quantity must be at least 1"),
   requirements: z.array(z.string()).min(1, "Add at least one requirement"),
-  timeline: z.number().min(1, "Timeline is required"),
+  timelineDays: z.number().min(1, "Timeline is required"),
 });
 
 type BriefFormData = z.infer<typeof briefSchema>;
@@ -35,7 +36,7 @@ export default function BriefCreationForm({ userId }: { userId: string }) {
       requirements: [""],
       budget: 1000,
       quantity: 100,
-      timeline: 30,
+      timelineDays: 30,
     },
   });
 
@@ -68,14 +69,14 @@ export default function BriefCreationForm({ userId }: { userId: string }) {
       });
 
       if (response.ok) {
-        alert("Brief created successfully!");
+        toast.success("Brief created successfully!");
         // Reset form
         setRequirements([""]);
       } else {
         throw new Error("Failed to create brief");
       }
     } catch (error) {
-      alert("Error creating brief");
+      toast.error("Error creating brief");
     } finally {
       setIsSubmitting(false);
     }
@@ -222,11 +223,13 @@ export default function BriefCreationForm({ userId }: { userId: string }) {
         </label>
         <input
           type="number"
-          {...register("timeline", { valueAsNumber: true })}
+          {...register("timelineDays", { valueAsNumber: true })}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        {errors.timeline && (
-          <p className="mt-1 text-sm text-red-600">{errors.timeline.message}</p>
+        {errors.timelineDays && (
+          <p className="mt-1 text-sm text-red-600">
+            {errors.timelineDays.message}
+          </p>
         )}
       </div>
 

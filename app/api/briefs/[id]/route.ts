@@ -1,7 +1,7 @@
 // app/api/briefs/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/db/client";
+import { prisma } from "@/prisma/prisma";
 
 export async function DELETE(
   request: NextRequest,

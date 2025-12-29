@@ -1,6 +1,7 @@
 // components/auth/LoginForm.tsx
 "use client";
 
+import { isBrand } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 import { Eye, EyeOff, Lock, LogIn, Mail } from "lucide-react";
 import Link from "next/link";
@@ -21,18 +22,18 @@ export default function LoginForm() {
     e.preventDefault();
     setLoading(true);
     setError("");
-
     try {
       // Sign in with Supabase[citation:5][citation:8]
       const { data, error } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
       });
+      console.log(error);
 
       if (error) throw error;
 
       // Redirect to dashboard after successful login
-      router.push("/dashboard");
+      router.push(`/${data.user.user_metadata.user_type}/dashboard`);
       router.refresh();
     } catch (error: any) {
       setError(error.message || "Login failed. Please check your credentials.");

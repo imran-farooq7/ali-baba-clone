@@ -1,6 +1,6 @@
 // app/(manufacturer)/briefs/page.tsx
 import ManufacturerBriefList from "@/components/manufacturer/ManufacturerBriefList";
-import { prisma } from "@/db/client";
+import { prisma } from "@/db/prisma";
 import { getCurrentUser } from "@/lib/auth";
 
 export default async function ManufacturerBriefsPage() {

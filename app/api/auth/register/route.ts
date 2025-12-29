@@ -1,30 +1,26 @@
-// app/api/auth/register/route.ts
-import { prisma } from "@/db/client";
-import { NextRequest, NextResponse } from "next/server";
+// app/api/auth/register/route.ts - UPDATED
+import { prisma } from "@/prisma/prisma";
+import { NextResponse } from "next/server";
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { supabaseUserId, email, name, company, type } = body;
+    const data = await request.json();
+    const { supabaseUserId, email, name, company, type } = data;
 
-    // Validate required fields
-    if (!supabaseUserId || !email || !name || !type) {
+    if (!supabaseUserId || !email) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { id: supabaseUserId },
-    });
+    // Convert type to uppercase to match UserType enum
+    const userType = type?.toUpperCase() || "BRAND";
 
-    if (existingUser) {
-      return NextResponse.json(
-        { error: "User already exists" },
-        { status: 409 }
-      );
+    // Validate type is one of the enum values
+    const validTypes = ["BRAND", "MANUFACTURER", "ADMIN"];
+    if (!validTypes.includes(userType)) {
+      return NextResponse.json({ error: "Invalid user type" }, { status: 400 });
     }
 
     // Create user in Prisma database
@@ -34,7 +30,13 @@ export async function POST(request: NextRequest) {
         email,
         name,
         company: company || null,
-        type,
+        type: userType, // Now uppercase
+        // Set default values for required arrays
+        preferredCategories: [],
+        capabilities: [],
+        certifications: [],
+        locations: [],
+        industries: [],
       },
     });
 
@@ -47,10 +49,19 @@ export async function POST(request: NextRequest) {
         type: user.type,
       },
     });
-  } catch (error) {
-    console.error("Error creating user:", error);
+  } catch (error: any) {
+    console.error("Registration error:", error);
+
+    // Handle unique constraint violations
+    if (error.code === "P2002") {
+      return NextResponse.json(
+        { error: "User already exists" },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json(
-      { error: "Failed to create user profile" },
+      { error: "Failed to create user profile", details: error.message },
       { status: 500 }
     );
   }

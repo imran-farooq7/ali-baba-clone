@@ -1,48 +1,59 @@
 // lib/auth.ts
-import { prisma } from "@/db/client";
+
+import { prisma } from "@/prisma/prisma";
+import { Prisma } from "./generated/prisma/browser";
 import { createClient } from "./supabase/server";
 
 // Fetch current user from Supabase and your Prisma database
+// lib/auth.ts - UPDATE THIS PART
 export const getCurrentUser = async () => {
   try {
+    const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
 
-    // Get the authenticated user from Supabase Auth
     const {
       data: { user: supabaseUser },
-      error: authError,
+      error,
     } = await supabase.auth.getUser();
 
-    if (authError || !supabaseUser) {
-      console.error("Auth error or no user found:", authError?.message);
+    if (error || !supabaseUser) {
       return null;
     }
 
-    // Get the corresponding user from your Prisma database
-    // Use the Supabase user ID as the connection
-    const prismaUser = await prisma.user.findUnique({
+    // Get metadata and convert type to uppercase
+    const metadata = supabaseUser.user_metadata || {};
+    const userType = metadata.user_type?.toUpperCase() || "BRAND";
+
+    // Validate type
+    const validTypes = ["BRAND", "MANUFACTURER", "ADMIN"];
+    const type = validTypes.includes(userType) ? userType : "BRAND";
+
+    let dbUser = await prisma.user.findUnique({
       where: { id: supabaseUser.id },
     });
 
-    if (!prismaUser) {
-      // If user doesn't exist in your Prisma prisma, create one
-      // This happens on first login
-      const newUser = await prisma.user.create({
+    if (!dbUser) {
+      dbUser = await prisma.user.create({
         data: {
           id: supabaseUser.id,
           email: supabaseUser.email || "",
-          name: supabaseUser.user_metadata?.name || "User",
-          type: supabaseUser.user_metadata?.type || "brand",
-          company: supabaseUser.user_metadata?.company || null,
-          avatar: supabaseUser.user_metadata?.avatar_url || null,
+          name: metadata.name || supabaseUser.email?.split("@")[0] || "User",
+          type: type, // Already uppercase
+          company: metadata.company || null,
+          avatar: metadata.avatar_url || metadata.avatar || null,
+          // Default arrays
+          preferredCategories: [],
+          capabilities: [],
+          certifications: [],
+          locations: [],
+          industries: [],
         },
       });
-      return newUser;
     }
 
-    return prismaUser;
+    return dbUser;
   } catch (error) {
-    console.error("Error getting current user:", error);
+    console.error("Error in getCurrentUser:", error);
     return null;
   }
 };
@@ -67,6 +78,10 @@ export const isBrand = async () => {
 export const isManufacturer = async () => {
   const user = await getCurrentUser();
   return user?.type === "MANUFACTURER";
+};
+export const logout = async () => {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
 };
 
 // Redirect if not authenticated (for middleware)

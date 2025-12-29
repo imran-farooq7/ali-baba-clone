@@ -1,7 +1,7 @@
 // app/api/manufacturers/capabilities/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/db/client";
+import { prisma } from "@/db/prisma";
 
 export async function POST(request: NextRequest) {
   try {

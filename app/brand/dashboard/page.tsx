@@ -1,9 +1,9 @@
 // app/(brand)/dashboard/page.tsx - COMPLETE
-import { getBriefsByBrand } from "@/db/client";
 import BriefCreationForm from "@/components/brand/BriefCreationForm";
 import BriefList from "@/components/brand/BriefList";
 import StatsCard from "@/components/dashboard/StatsCard";
 import { getCurrentUser } from "@/lib/auth";
+import { getBriefsByBrand } from "@/prisma/prisma";
 
 export default async function BrandDashboard() {
   const user = await getCurrentUser();

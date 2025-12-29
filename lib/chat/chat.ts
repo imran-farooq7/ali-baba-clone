@@ -1,68 +1,73 @@
 // lib/db/chat.operations.ts
 
-import { prisma } from "@/db/client"
+import { prisma } from "@/db/prisma";
 
 // Type Definitions
 export interface MessageData {
-  id: string
-  content?: string | null
-  senderId: string
-  conversationId: string
-  fileUrl?: string | null
-  fileName?: string | null
-  fileSize?: number | null
-  fileType?: string | null
-  type: string
-  createdAt: Date
+  id: string;
+  content?: string | null;
+  senderId: string;
+  conversationId: string;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  fileSize?: number | null;
+  fileType?: string | null;
+  type: string;
+  createdAt: Date;
   sender: {
-    id: string
-    name: string
-    avatar?: string | null
-    type: string
-  }
+    id: string;
+    name: string;
+    avatar?: string | null;
+    type: string;
+  };
 }
 
 export interface ConversationData {
-  id: string
-  title?: string | null
-  lastMessageAt?: Date | null
+  id: string;
+  title?: string | null;
+  lastMessageAt?: Date | null;
   participants: Array<{
-    id: string
-    userId: string
-    userRole: string
+    id: string;
+    userId: string;
+    userRole: string;
     user: {
-      id: string
-      name: string
-      email: string
-      avatar?: string | null
-      type: string
-      company?: string | null
-    }
-  }>
-  messages: MessageData[]
-  brief?: { id: string; title: string; status: string } | null
-  proposal?: { id: string; message: string; status: string } | null
+      id: string;
+      name: string;
+      email: string;
+      avatar?: string | null;
+      type: string;
+      company?: string | null;
+    };
+  }>;
+  messages: MessageData[];
+  brief?: { id: string; title: string; status: string } | null;
+  proposal?: { id: string; message: string; status: string } | null;
 }
 
 // Pure function to verify user participation
-export const verifyUserParticipation = async (userId: string, conversationId: string) => {
+export const verifyUserParticipation = async (
+  userId: string,
+  conversationId: string
+) => {
   return prisma.participant.findUnique({
     where: {
       userId_conversationId: {
         userId,
-        conversationId
-      }
-    }
-  })
-}
+        conversationId,
+      },
+    },
+  });
+};
 
 // Pure function to get user conversations
-export const getUserConversations = async (userId: string): Promise<ConversationData[]> => {
+export const getUserConversations = async (
+  userId: string
+): Promise<ConversationData[]> => {
   return prisma.conversation.findMany({
     where: {
       participants: {
-        some: { userId }
-      }
+        some: { userId },
+      },
     },
     include: {
       participants: {
@@ -74,10 +79,10 @@ export const getUserConversations = async (userId: string): Promise<Conversation
               email: true,
               avatar: true,
               type: true,
-              company: true
-            }
-          }
-        }
+              company: true,
+            },
+          },
+        },
       },
       messages: {
         take: 1,
@@ -88,32 +93,35 @@ export const getUserConversations = async (userId: string): Promise<Conversation
               id: true,
               name: true,
               avatar: true,
-              type: true
-            }
-          }
-        }
+              type: true,
+            },
+          },
+        },
       },
       brief: {
         select: {
           id: true,
           title: true,
-          status: true
-        }
+          status: true,
+        },
       },
       proposal: {
         select: {
           id: true,
           message: true,
-          status: true
-        }
-      }
+          status: true,
+        },
+      },
     },
-    orderBy: { lastMessageAt: "desc" }
-  })
-}
+    orderBy: { lastMessageAt: "desc" },
+  });
+};
 
 // Pure function to get conversation by ID
-export const getConversation = async (conversationId: string, userId: string) => {
+export const getConversation = async (
+  conversationId: string,
+  userId: string
+) => {
   const conversation = await prisma.conversation.findUnique({
     where: { id: conversationId },
     include: {
@@ -126,34 +134,37 @@ export const getConversation = async (conversationId: string, userId: string) =>
               email: true,
               avatar: true,
               type: true,
-              company: true
-            }
-          }
-        }
+              company: true,
+            },
+          },
+        },
       },
       brief: {
         select: {
           id: true,
           title: true,
-          status: true
-        }
+          status: true,
+        },
       },
       proposal: {
         select: {
           id: true,
           message: true,
-          status: true
-        }
-      }
-    }
-  })
+          status: true,
+        },
+      },
+    },
+  });
 
-  if (!conversation || !conversation.participants.some(p => p.userId === userId)) {
-    return null
+  if (
+    !conversation ||
+    !conversation.participants.some((p) => p.userId === userId)
+  ) {
+    return null;
   }
 
-  return conversation
-}
+  return conversation;
+};
 
 // Pure function to get messages with pagination
 export const getMessages = async (
@@ -162,22 +173,22 @@ export const getMessages = async (
   cursor?: string,
   limit: number = 50
 ) => {
-  const participant = await verifyUserParticipation(userId, conversationId)
+  const participant = await verifyUserParticipation(userId, conversationId);
 
   if (!participant) {
-    return { messages: [], nextCursor: null }
+    return { messages: [], nextCursor: null };
   }
 
   // Update last read time (side effect wrapped in transaction)
   await prisma.participant.update({
     where: { id: participant.id },
-    data: { lastReadAt: new Date() }
-  })
+    data: { lastReadAt: new Date() },
+  });
 
   const messages = await prisma.message.findMany({
     where: {
       conversationId,
-      isDeleted: false
+      isDeleted: false,
     },
     include: {
       sender: {
@@ -185,38 +196,47 @@ export const getMessages = async (
           id: true,
           name: true,
           avatar: true,
-          type: true
-        }
-      }
+          type: true,
+        },
+      },
     },
     take: limit + 1,
     skip: cursor ? 1 : 0,
     cursor: cursor ? { id: cursor } : undefined,
-    orderBy: { createdAt: "desc" }
-  })
+    orderBy: { createdAt: "desc" },
+  });
 
-  const hasNextPage = messages.length > limit
-  const items = hasNextPage ? messages.slice(0, -1) : messages
-  const nextCursor = hasNextPage ? items[items.length - 1]?.id : null
+  const hasNextPage = messages.length > limit;
+  const items = hasNextPage ? messages.slice(0, -1) : messages;
+  const nextCursor = hasNextPage ? items[items.length - 1]?.id : null;
 
   return {
     messages: items.reverse(),
-    nextCursor
-  }
-}
+    nextCursor,
+  };
+};
 
 // Pure function factory for sending messages
-export const createSendMessage = (prismaClient: typeof prisma) => 
+export const createSendMessage =
+  (prismaClient: typeof prisma) =>
   async (data: {
-    conversationId: string
-    senderId: string
-    content?: string
-    fileUrl?: string
-    fileName?: string
-    fileSize?: number
-    fileType?: string
+    conversationId: string;
+    senderId: string;
+    content?: string;
+    fileUrl?: string;
+    fileName?: string;
+    fileSize?: number;
+    fileType?: string;
   }) => {
-    const { conversationId, senderId, content, fileUrl, fileName, fileSize, fileType } = data
+    const {
+      conversationId,
+      senderId,
+      content,
+      fileUrl,
+      fileName,
+      fileSize,
+      fileType,
+    } = data;
 
     return prismaClient.$transaction(async (tx) => {
       // Verify participation
@@ -224,13 +244,13 @@ export const createSendMessage = (prismaClient: typeof prisma) =>
         where: {
           userId_conversationId: {
             userId: senderId,
-            conversationId
-          }
-        }
-      })
+            conversationId,
+          },
+        },
+      });
 
       if (!participant) {
-        throw new Error("Not a participant in this conversation")
+        throw new Error("Not a participant in this conversation");
       }
 
       // Create message
@@ -243,7 +263,7 @@ export const createSendMessage = (prismaClient: typeof prisma) =>
           fileName,
           fileSize,
           fileType,
-          type: fileUrl ? "FILE" : "TEXT"
+          type: fileUrl ? "FILE" : "TEXT",
         },
         include: {
           sender: {
@@ -251,60 +271,61 @@ export const createSendMessage = (prismaClient: typeof prisma) =>
               id: true,
               name: true,
               avatar: true,
-              type: true
-            }
-          }
-        }
-      })
+              type: true,
+            },
+          },
+        },
+      });
 
       // Update conversation
       await tx.conversation.update({
         where: { id: conversationId },
         data: {
           lastMessageAt: new Date(),
-          updatedAt: new Date()
-        }
-      })
+          updatedAt: new Date(),
+        },
+      });
 
-      return message
-    })
-  }
+      return message;
+    });
+  };
 
 // Factory function for creating conversations
-export const createConversationCreator = (prismaClient: typeof prisma) => 
+export const createConversationCreator =
+  (prismaClient: typeof prisma) =>
   async (data: {
-    participantIds: string[]
-    title?: string
-    briefId?: string
-    proposalId?: string
-    creatorId: string
+    participantIds: string[];
+    title?: string;
+    briefId?: string;
+    proposalId?: string;
+    creatorId: string;
   }) => {
-    const { participantIds, title, briefId, proposalId, creatorId } = data
+    const { participantIds, title, briefId, proposalId, creatorId } = data;
 
     // Check for existing conversation
     if (briefId) {
       const existing = await prismaClient.conversation.findUnique({
-        where: { briefId }
-      })
-      if (existing) return existing
+        where: { briefId },
+      });
+      if (existing) return existing;
     }
 
     if (proposalId) {
       const existing = await prismaClient.conversation.findUnique({
-        where: { proposalId }
-      })
-      if (existing) return existing
+        where: { proposalId },
+      });
+      if (existing) return existing;
     }
 
     // Add creator to participants
-    const allParticipantIds = [...new Set([creatorId, ...participantIds])]
+    const allParticipantIds = [...new Set([creatorId, ...participantIds])];
 
     return prismaClient.$transaction(async (tx) => {
       // Get user types
       const users = await tx.user.findMany({
         where: { id: { in: allParticipantIds } },
-        select: { id: true, type: true }
-      })
+        select: { id: true, type: true },
+      });
 
       const conversation = await tx.conversation.create({
         data: {
@@ -312,11 +333,11 @@ export const createConversationCreator = (prismaClient: typeof prisma) =>
           briefId,
           proposalId,
           participants: {
-            create: allParticipantIds.map(userId => ({
+            create: allParticipantIds.map((userId) => ({
               userId,
-              userRole: users.find(u => u.id === userId)?.type || "BRAND"
-            }))
-          }
+              userRole: users.find((u) => u.id === userId)?.type || "BRAND",
+            })),
+          },
         },
         include: {
           participants: {
@@ -328,29 +349,29 @@ export const createConversationCreator = (prismaClient: typeof prisma) =>
                   email: true,
                   avatar: true,
                   type: true,
-                  company: true
-                }
-              }
-            }
-          }
-        }
-      })
+                  company: true,
+                },
+              },
+            },
+          },
+        },
+      });
 
       // Link to brief or proposal
       if (briefId) {
         await tx.brief.update({
           where: { id: briefId },
-          data: { conversationId: conversation.id }
-        })
+          data: { conversationId: conversation.id },
+        });
       }
 
       if (proposalId) {
         await tx.proposal.update({
           where: { id: proposalId },
-          data: { conversationId: conversation.id }
-        })
+          data: { conversationId: conversation.id },
+        });
       }
 
-      return conversation
-    })
-  }
+      return conversation;
+    });
+  };

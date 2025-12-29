@@ -1,7 +1,7 @@
 // components/layout/header.tsx
 import Link from "next/link";
 import { Factory, Sparkles } from "lucide-react";
-import { AuthButtons } from "@/components/auth/auth-buttons";
+import { AuthButtons } from "./auth-btns";
 
 export function Navbar() {
   return (
