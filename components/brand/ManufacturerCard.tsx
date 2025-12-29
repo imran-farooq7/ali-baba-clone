@@ -63,7 +63,7 @@ export default function ManufacturerCard({
 
       <div className={isGrid ? "space-y-3" : "flex gap-4"}>
         {/* Logo/Avatar */}
-        <div className={isGrid ? "" : "flex-shrink-0"}>
+        <div className={isGrid ? "" : "shrink-0"}>
           <div
             className={`relative ${
               isGrid ? "h-16 w-16" : "h-20 w-20"
