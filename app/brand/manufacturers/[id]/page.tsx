@@ -1,10 +1,10 @@
 // app/(brand)/manufacturers/[id]/page.tsx
 import ChatButton from "@/components/chat/ChatButton";
+import StatsCard from "@/components/dashboard/StatsCard";
 import CapabilityCard from "@/components/manufacturers/CapabilityCard";
 import CertificationCard from "@/components/manufacturers/CertificationCard";
 import RecentBriefs from "@/components/manufacturers/RecentBriefs";
 import ReviewsSection from "@/components/manufacturers/ReviewsSection";
-import StatsCard from "@/components/manufacturers/StatsCard";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/prisma/prisma";
 import { format } from "date-fns";
@@ -283,34 +283,26 @@ export default async function ManufacturerDetailPage({
             {/* Quick Stats */}
             <div className="lg:w-80 space-y-4">
               <StatsCard
-                icon={BarChart}
                 title="Acceptance Rate"
                 value={`${stats.acceptanceRate}%`}
-                description={`${stats.acceptedProposals} of ${stats.totalProposals} proposals`}
                 color="blue"
               />
 
               <StatsCard
-                icon={Clock}
                 title="Avg Response"
                 value={`${stats.avgResponseTime}h`}
-                description="Average response time"
                 color="green"
               />
 
               <StatsCard
-                icon={Star}
                 title="Rating"
                 value={stats.avgRating.toFixed(1)}
-                description="Based on 24 reviews"
                 color="yellow"
               />
 
               <StatsCard
-                icon={Users}
                 title="Bookmarks"
                 value={manufacturer._count?.bookmarkedBy || 0}
-                description="Brands saved this profile"
                 color="purple"
               />
             </div>
