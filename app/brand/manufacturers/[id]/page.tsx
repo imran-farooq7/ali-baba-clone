@@ -1,8 +1,8 @@
 // app/(brand)/manufacturers/[id]/page.tsx
 import CapabilityCard from "@/components/brand/CapabilityCard";
+import CertificationCard from "@/components/brand/CertificationCard";
 import ChatButton from "@/components/chat/ChatButton";
 import StatsCard from "@/components/dashboard/StatsCard";
-import CertificationCard from "@/components/manufacturers/CertificationCard";
 import RecentBriefs from "@/components/manufacturers/RecentBriefs";
 import ReviewsSection from "@/components/manufacturers/ReviewsSection";
 import { getCurrentUser } from "@/lib/auth";
