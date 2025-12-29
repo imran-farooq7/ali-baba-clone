@@ -27,3 +27,25 @@ export interface CompanyInfo {
   industries: string[];
   description: string;
 }
+
+export interface Manufacturer {
+  id: string;
+  name: string;
+  email: string;
+  company: string;
+  avatar: string | null;
+  description: string | null;
+  capabilities: string[];
+  certifications: string[];
+  minOrderQuantity: number | null;
+  maxOrderQuantity: number | null;
+  productionCapacity: number | null;
+  locations: string[];
+  industries: string[];
+  verified: boolean;
+  rating: number | null;
+  matchScore: number;
+  isBookmarked: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}

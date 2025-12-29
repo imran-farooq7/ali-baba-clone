@@ -1,6 +1,7 @@
 // components/manufacturers/ManufacturerCard.tsx
 "use client";
 
+import { Manufacturer } from "@/lib/types";
 import {
   Factory,
   MapPin,
@@ -14,7 +15,6 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { Manufacturer } from "@/types/manufacturer";
 
 interface ManufacturerCardProps {
   manufacturer: Manufacturer;

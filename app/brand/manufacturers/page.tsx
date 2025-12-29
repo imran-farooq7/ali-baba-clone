@@ -128,19 +128,21 @@ export default function ManufacturerDiscoveryPage() {
   };
 
   // Calculate active filters count
-  const activeFilterCount = Object.values(selectedFilters).reduce(
-    (count, filter) => {
-      if (Array.isArray(filter)) {
-        return count! + filter.length;
-      } else if (typeof filter === "boolean" && filter) {
-        return count! + 1;
-      } else if (filter !== null) {
-        return count! + 1;
-      }
-      return count;
-    },
-    0
-  );
+  const activeFilterCount = (() => {
+    let count = 0;
+
+    // Count array filters
+    count += selectedFilters.category.length;
+    count += selectedFilters.location.length;
+    count += selectedFilters.certification.length;
+
+    // Count other filters
+    if (selectedFilters.minCapacity !== null) count += 1;
+    if (selectedFilters.minOrderQuantity !== null) count += 1;
+    if (selectedFilters.verifiedOnly) count += 1;
+
+    return count;
+  })();
 
   return (
     <div className="min-h-screen bg-gray-50">
