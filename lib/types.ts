@@ -43,7 +43,7 @@ export interface Manufacturer {
   locations: string[];
   industries: string[];
   verified: boolean;
-  rating: number | null;
+  rating: number;
   matchScore: number;
   isBookmarked: boolean;
   createdAt: Date;
