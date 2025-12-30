@@ -6,10 +6,10 @@ import {
   Send,
   Bot,
   Sparkles,
-  ThumbsUp,
-  ThumbsDown,
-  Copy,
   RefreshCw,
+  MessageSquare,
+  Briefcase,
+  Factory,
 } from "lucide-react";
 import {
   generateAIResponse,
@@ -29,23 +29,27 @@ interface Message {
   requiresAction?: boolean;
 }
 
-export default function AiChatAssistant() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content:
-        "Hello! I'm your AI manufacturing assistant. I can help you with brief creation, manufacturer matching, proposal reviews, and more. How can I assist you today?",
-      timestamp: new Date(),
-      suggestions: [
-        "Help me write a manufacturing brief",
-        "Find manufacturers for electronics",
-        "Review a proposal I received",
-        "Explain manufacturing processes",
-      ],
-    },
-  ]);
+interface AiChatAssistantProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+  initialPrompt?: string;
+  context?: {
+    briefId?: string;
+    proposalId?: string;
+    manufacturerId?: string;
+    userType?: "brand" | "manufacturer";
+  };
+}
+
+export default function AiChatAssistant({
+  isOpen: externalIsOpen,
+  onClose: externalOnClose,
+  initialPrompt,
+  context: externalContext,
+}: AiChatAssistantProps) {
+  // Use internal state if no external control provided
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId] = useState(
@@ -53,6 +57,54 @@ export default function AiChatAssistant() {
   );
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Determine if controlled or uncontrolled
+  const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
+  const setIsOpen = externalOnClose
+    ? () => externalOnClose()
+    : setInternalIsOpen;
+
+  // Initialize with welcome message
+  useEffect(() => {
+    if (messages.length === 0) {
+      setMessages([
+        {
+          id: "welcome",
+          role: "assistant",
+          content: getWelcomeMessage(),
+          timestamp: new Date(),
+          suggestions: getWelcomeSuggestions(),
+        },
+      ]);
+    }
+  }, []);
+
+  // Handle initial prompt
+  useEffect(() => {
+    if (initialPrompt && isOpen && messages.length <= 1) {
+      // Small delay to ensure component is mounted
+      setTimeout(() => {
+        handleSend(initialPrompt);
+      }, 500);
+    }
+  }, [initialPrompt, isOpen]);
+
+  // Listen for external open events
+  useEffect(() => {
+    const handleOpenChat = (event: CustomEvent) => {
+      setIsOpen(true);
+      if (event.detail?.message) {
+        setTimeout(() => handleSend(event.detail.message), 100);
+      }
+    };
+
+    window.addEventListener("open-ai-chat", handleOpenChat as EventListener);
+    return () =>
+      window.removeEventListener(
+        "open-ai-chat",
+        handleOpenChat as EventListener
+      );
+  }, []);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -66,13 +118,32 @@ export default function AiChatAssistant() {
     }
   }, [isOpen]);
 
+  const getWelcomeMessage = () => {
+    const pageContext = extractPageContext();
+    if (pageContext.briefId) {
+      return "Hello! I see you're viewing a brief. I can help you analyze it, suggest improvements, or find matching manufacturers. What would you like to know?";
+    }
+    if (pageContext.manufacturerId) {
+      return "Hello! I see you're comparing manufacturers. I can help you analyze their capabilities, compare pricing, or suggest the best match for your needs.";
+    }
+    return "Hello! I'm your AI manufacturing assistant. I can help you with brief creation, manufacturer matching, proposal reviews, and more. How can I assist you today?";
+  };
+
+  const getWelcomeSuggestions = () => {
+    const context = getContext();
+    return getSuggestedPrompts(context);
+  };
+
   // Get context from current page
   const getContext = useCallback(() => {
     const pageContext = extractPageContext();
     return {
       conversationId,
-      userType: "brand", // You'd get this from auth context
-      ...pageContext,
+      userType: externalContext?.userType || "brand",
+      briefId: externalContext?.briefId || pageContext.briefId,
+      proposalId: externalContext?.proposalId || pageContext.proposalId,
+      manufacturerId:
+        externalContext?.manufacturerId || pageContext.manufacturerId,
       recentMessages: messages
         .filter((msg) => !msg.isLoading)
         .map((msg) => ({
@@ -80,9 +151,9 @@ export default function AiChatAssistant() {
           content: msg.content,
           timestamp: msg.timestamp,
         }))
-        .slice(-10), // Last 10 messages
+        .slice(-10),
     };
-  }, [conversationId, messages]);
+  }, [conversationId, messages, externalContext]);
 
   // Handle sending a message
   const handleSend = async (content: string) => {
@@ -153,37 +224,15 @@ export default function AiChatAssistant() {
     handleSend(action);
   };
 
-  // Handle follow-up question
-  const handleFollowUp = (question: string) => {
-    handleSend(question);
-  };
-
-  // Copy message to clipboard
-  const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text);
-    // You could add a toast notification here
-  };
-
-  // Regenerate last response
-  const handleRegenerate = () => {
-    const lastUserMessage = messages
-      .filter((msg) => msg.role === "user" && !msg.isLoading)
-      .pop();
-
-    if (lastUserMessage) {
-      handleSend(lastUserMessage.content);
-    }
-  };
-
   // Clear conversation
   const handleClear = () => {
     setMessages([
       {
         id: "welcome",
         role: "assistant",
-        content: "Hello! How can I assist you with manufacturing today?",
+        content: getWelcomeMessage(),
         timestamp: new Date(),
-        suggestions: getSuggestedPrompts(getContext()),
+        suggestions: getWelcomeSuggestions(),
       },
     ]);
   };
@@ -199,10 +248,21 @@ export default function AiChatAssistant() {
   // Get suggested prompts
   const suggestedPrompts = getSuggestedPrompts(getContext());
 
+  // Determine page icon
+  const getPageIcon = () => {
+    const context = getContext();
+    if (context.briefId) return <Briefcase className="w-5 h-5" />;
+    if (context.manufacturerId) return <Factory className="w-5 h-5" />;
+    return <MessageSquare className="w-5 h-5" />;
+  };
+
+  // Floating button - only show if not externally controlled
+  const showFloatingButton = externalIsOpen === undefined;
+
   return (
     <>
-      {/* Floating Chat Button */}
-      {!isOpen && (
+      {/* Floating Chat Button - only when uncontrolled */}
+      {showFloatingButton && !isOpen && (
         <button
           onClick={() => setIsOpen(true)}
           className="fixed bottom-6 right-6 w-14 h-14 bg-linear-to-r from-blue-600 to-indigo-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group z-50"
@@ -222,7 +282,7 @@ export default function AiChatAssistant() {
           <div className="flex items-center justify-between p-4 border-b bg-linear-to-r from-blue-50 to-indigo-50 rounded-t-2xl">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-linear-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                <Bot className="w-6 h-6 text-white" />
+                {getPageIcon()}
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900">
@@ -312,38 +372,6 @@ export default function AiChatAssistant() {
                           </div>
                         </div>
                       )}
-
-                      {/* Follow-up Questions */}
-                      {message.role === "assistant" &&
-                        message.followUpQuestions && (
-                          <div className="mt-3 space-y-2">
-                            <div className="text-xs font-medium text-gray-500">
-                              FOLLOW-UP QUESTIONS
-                            </div>
-                            <div className="space-y-1">
-                              {message.followUpQuestions.map(
-                                (question, idx) => (
-                                  <button
-                                    key={idx}
-                                    onClick={() => handleFollowUp(question)}
-                                    className="block w-full text-left px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-lg transition-colors"
-                                  >
-                                    {question}
-                                  </button>
-                                )
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                      {/* Action Required Badge */}
-                      {message.role === "assistant" &&
-                        message.requiresAction && (
-                          <div className="mt-3 inline-flex items-center gap-1 px-3 py-1 bg-amber-50 text-amber-700 text-xs font-medium rounded-full">
-                            <Sparkles className="w-3 h-3" />
-                            Action Recommended
-                          </div>
-                        )}
                     </>
                   )}
                 </div>
@@ -353,7 +381,7 @@ export default function AiChatAssistant() {
           </div>
 
           {/* Suggested Prompts */}
-          {messages.length === 1 && (
+          {messages.length <= 2 && (
             <div className="px-4 pb-3">
               <div className="text-xs font-medium text-gray-500 mb-2">
                 TRY ASKING:

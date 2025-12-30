@@ -4,6 +4,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import "@/app/globals.css";
 import { Toaster } from "react-hot-toast";
+import { AIAssistantProvider } from "@/context/AiAssistantWrapper";
+import AiChatAssistant from "@/components/ai/AiChatAssistant";
 
 const BrandLayout = async ({ children }: { children: ReactNode }) => {
   const user = await getCurrentUser();
@@ -11,8 +13,11 @@ const BrandLayout = async ({ children }: { children: ReactNode }) => {
   return (
     <html>
       <body>
-        <Toaster />
-        <BrandDashboardLayout user={user}>{children}</BrandDashboardLayout>;
+        <AIAssistantProvider>
+          <Toaster />
+          <BrandDashboardLayout user={user}>{children}</BrandDashboardLayout>;
+          <AiChatAssistant />
+        </AIAssistantProvider>
       </body>
     </html>
   );

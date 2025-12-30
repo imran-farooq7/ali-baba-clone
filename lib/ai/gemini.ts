@@ -19,6 +19,7 @@ export interface AIContext {
   conversationId?: string;
   userId?: string;
   briefId?: string;
+  manufacturerId?: string;
   proposalId?: string;
   userType?: string;
   recentMessages?: AIMessage[];
@@ -251,6 +252,8 @@ export const extractPageContext = (): Partial<AIContext> => {
 
   return {
     briefId,
+    manufacturerId,
+
     // Add more context extraction as needed
   };
 };
