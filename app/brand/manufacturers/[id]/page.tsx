@@ -2,9 +2,9 @@
 import CapabilityCard from "@/components/brand/CapabilityCard";
 import CertificationCard from "@/components/brand/CertificationCard";
 import RecentBriefs from "@/components/brand/RecentBriefs";
+import ReviewsSection from "@/components/brand/ReviewsSection";
 import ChatButton from "@/components/chat/ui/Chat-button";
 import StatsCard from "@/components/dashboard/StatsCard";
-import ReviewsSection from "@/components/manufacturers/ReviewsSection";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/prisma/prisma";
 import { format } from "date-fns";
@@ -328,7 +328,12 @@ export default async function ManufacturerDetailPage({
                         key={index}
                         capability={capability}
                         description={
-                          manufacturer.capabilityDetails?.[capability]
+                          (
+                            manufacturer.capabilityDetails as Record<
+                              string,
+                              any
+                            >
+                          )?.[capability]
                         }
                       />
                     ))}
@@ -349,7 +354,12 @@ export default async function ManufacturerDetailPage({
                         key={index}
                         certification={certification}
                         details={
-                          manufacturer.certificationDetails?.[certification]
+                          (
+                            manufacturer.certificationDetails as Record<
+                              string,
+                              any
+                            >
+                          )?.[certification]
                         }
                       />
                     ))}
