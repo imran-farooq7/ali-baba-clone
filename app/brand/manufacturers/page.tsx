@@ -1,30 +1,24 @@
 // app/(brand)/manufacturers/page.tsx
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import CompareButton from "@/components/brand/CompareButton";
+import FilterSidebar from "@/components/brand/FilterSidebar";
+import ManufacturerGrid from "@/components/brand/ManufacturerGrid";
+import { useCompare } from "@/lib/brand/hooks/useCompare";
+import { useManufacturers } from "@/lib/brand/hooks/useManufacturers";
 import {
-  Search,
-  Filter,
-  MapPin,
-  Star,
-  Users,
-  Factory,
   CheckCircle,
+  Factory,
   Grid,
   List,
+  Search,
   SlidersHorizontal,
-  X,
-  Bookmark,
-  BookmarkCheck,
-  BarChart,
   TrendingUp,
+  Users,
+  X,
 } from "lucide-react";
-import ManufacturerGrid from "@/components/brand/ManufacturerGrid";
-import FilterSidebar from "@/components/brand/FilterSidebar";
-import CompareButton from "@/components/brand/CompareButton";
-import { useManufacturers } from "@/lib/brand/hooks/useManufacturers";
-import { useCompare } from "@/lib/brand/hooks/useCompare";
+import { useRouter } from "next/navigation";
+import { useCallback, useState } from "react";
 
 export default function ManufacturerDiscoveryPage() {
   const router = useRouter();

@@ -76,6 +76,7 @@ export default function ComparePage() {
   const fetchAvailableManufacturers = async (): Promise<
     ManufacturerForComparison[]
   > => {
+    // Only fetch verified manufacturers for better UX
     const response = await fetch("/api/manufacturers?limit=50&verified=true");
     if (!response.ok) throw new Error("Failed to fetch manufacturers");
     const data = await response.json();

@@ -97,7 +97,7 @@ export default async function ManufacturerDashboardPage() {
   };
 
   return (
-    <ManufacturerDashboardLayout user={user}>
+    <>
       {/* Welcome section */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
@@ -130,7 +130,6 @@ export default async function ManufacturerDashboardPage() {
           icon={Briefcase}
           color="blue"
           subtitle="All time"
-          onClick={() => (window.location.href = "/manufacturer/proposals")}
         />
 
         <ManufacturerStatsCard
@@ -155,7 +154,6 @@ export default async function ManufacturerDashboardPage() {
           icon={Factory}
           color="green"
           subtitle="Matching your profile"
-          onClick={() => (window.location.href = "/manufacturer/briefs")}
         />
       </div>
 
@@ -243,6 +241,6 @@ export default async function ManufacturerDashboardPage() {
           <ManufacturerProposalList proposals={proposals.slice(0, 5)} />
         </div>
       </div>
-    </ManufacturerDashboardLayout>
+    </>
   );
 }

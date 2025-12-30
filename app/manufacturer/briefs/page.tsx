@@ -1,7 +1,7 @@
 // app/(manufacturer)/briefs/page.tsx
 import ManufacturerBriefList from "@/components/manufacturer/ManufacturerBriefList";
-import { prisma } from "@/db/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/prisma/prisma";
 
 export default async function ManufacturerBriefsPage() {
   const user = await getCurrentUser();

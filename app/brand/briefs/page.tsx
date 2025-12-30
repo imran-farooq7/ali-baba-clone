@@ -8,7 +8,7 @@ export default async function BriefsPage() {
   const user = await getCurrentUser();
 
   if (!user) {
-    redirect("/auth/login");
+    redirect("/login");
   }
 
   // Fetch briefs for this brand

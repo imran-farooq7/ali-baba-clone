@@ -21,8 +21,6 @@ interface Manufacturer {
   rating: number;
   matchScore: number;
   isBookmarked: boolean;
-  createdAt: Date;
-  updatedAt: Date;
   leadTime: string;
   responseTime: string;
   sustainabilityScore: number;

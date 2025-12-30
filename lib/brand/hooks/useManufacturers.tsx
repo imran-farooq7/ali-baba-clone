@@ -51,8 +51,10 @@ export function useManufacturers(
       }
 
       const data = await response.json();
+      console.log(data);
 
-      setManufacturers(data.manufacturers || []);
+      setManufacturers(data);
+      console.log(manufacturers);
       setTotalCount(data.totalCount || 0);
       setMatchedCount(data.matchedCount || 0);
     } catch (err: any) {

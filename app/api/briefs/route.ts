@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
         location: data.location || null,
         requirements: data.requirements || [],
         attachments: data.attachments || [],
-        status: data.status || BriefStatus.DRAFT,
+        status: data.status || BriefStatus.PUBLISHED,
         brandId: user.id,
         // Optional fields with defaults
         eligibilityScore: data.eligibilityScore || null,

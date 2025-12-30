@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import LogoutBtn from "../auth/logout-btn";
 
 const navigation = [
   { name: "Dashboard", href: "/brand/dashboard", icon: BarChart },
@@ -211,6 +212,7 @@ export default function BrandDashboardLayout({
                 <p className="font-semibold text-gray-900">{user?.name}</p>
                 <p className="text-gray-500">Brand Account</p>
               </div>
+              <LogoutBtn />
             </div>
           </div>
         </div>
