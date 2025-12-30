@@ -45,7 +45,7 @@ export const POST = async (request: NextRequest) => {
 
     // Create conversation using factory function
     const createConversation = createConversationCreator(
-      require("@/lib/prisma").prisma
+      require("@/lib/generated/prisma").prisma
     );
     const conversation = await createConversation({
       participantIds,

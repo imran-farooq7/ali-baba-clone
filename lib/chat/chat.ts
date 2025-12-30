@@ -1,6 +1,6 @@
 // lib/db/chat.operations.ts
 
-import { prisma } from "@/db/prisma";
+import { prisma } from "@/prisma/prisma";
 
 // Type Definitions
 export interface MessageData {
