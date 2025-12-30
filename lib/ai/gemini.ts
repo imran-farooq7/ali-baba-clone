@@ -20,7 +20,7 @@ export interface AIContext {
   userId?: string;
   briefId?: string;
   proposalId?: string;
-  userType?: "brand" | "manufacturer";
+  userType?: string;
   recentMessages?: AIMessage[];
 }
 
