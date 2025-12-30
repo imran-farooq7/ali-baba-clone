@@ -1,11 +1,11 @@
-// components/brand/BriefCreationForm.tsx - COMPLETE
+// components/brand/BriefCreationForm.tsx - UPDATED
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Save } from "lucide-react";
 import toast from "react-hot-toast";
 
 const briefSchema = z.object({
@@ -20,15 +20,27 @@ const briefSchema = z.object({
 
 type BriefFormData = z.infer<typeof briefSchema>;
 
-export default function BriefCreationForm({ userId }: { userId: string }) {
+interface BriefCreationFormProps {
+  userId: string;
+  initialData?: any;
+  onUpdate?: (data: BriefFormData) => Promise<void>;
+  isEditMode?: boolean;
+}
+
+export default function BriefCreationForm({
+  userId,
+  initialData,
+  onUpdate,
+  isEditMode = false,
+}: BriefCreationFormProps) {
   const [requirements, setRequirements] = useState<string[]>([""]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
     register,
     handleSubmit,
-
     setValue,
+    reset,
     formState: { errors },
   } = useForm<BriefFormData>({
     resolver: zodResolver(briefSchema),
@@ -37,46 +49,82 @@ export default function BriefCreationForm({ userId }: { userId: string }) {
       budget: 1000,
       quantity: 100,
       timelineDays: 30,
+      ...(initialData && {
+        title: initialData.title || "",
+        description: initialData.description || "",
+        category: initialData.category || "",
+        budget: initialData.budget || 1000,
+        quantity: initialData.quantity || 100,
+        timelineDays: initialData.timelineDays || 30,
+      }),
     },
   });
+
+  // Initialize requirements from initialData
+  useEffect(() => {
+    if (initialData) {
+      // Handle different requirement formats
+      if (
+        initialData.requirements &&
+        typeof initialData.requirements === "object"
+      ) {
+        // If requirements is a JSON object, extract values
+        const reqArray = Object.values(initialData.requirements);
+        setRequirements(
+          reqArray.filter((r): r is string => typeof r === "string")
+        );
+      } else if (Array.isArray(initialData.requirements)) {
+        setRequirements(initialData.requirements);
+      }
+    }
+  }, [initialData]);
+
+  // Update form when requirements change
+  useEffect(() => {
+    setValue("requirements", requirements);
+  }, [requirements, setValue]);
 
   const addRequirement = () => {
     const newRequirements = [...requirements, ""];
     setRequirements(newRequirements);
-    setValue("requirements", newRequirements);
   };
 
   const removeRequirement = (index: number) => {
     const newRequirements = requirements.filter((_, i) => i !== index);
     setRequirements(newRequirements);
-    setValue("requirements", newRequirements);
   };
 
   const updateRequirement = (index: number, value: string) => {
     const newRequirements = [...requirements];
     newRequirements[index] = value;
     setRequirements(newRequirements);
-    setValue("requirements", newRequirements);
   };
 
   const onSubmit = async (data: BriefFormData) => {
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/briefs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, brandId: userId }),
-      });
-
-      if (response.ok) {
-        toast.success("Brief created successfully!");
-        // Reset form
-        setRequirements([""]);
+      if (isEditMode && onUpdate) {
+        // Edit mode - call onUpdate
+        await onUpdate(data);
       } else {
-        throw new Error("Failed to create brief");
+        // Create mode - original logic
+        const response = await fetch("/api/briefs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...data, brandId: userId }),
+        });
+
+        if (response.ok) {
+          toast.success("Brief created successfully!");
+          // Reset form
+          setRequirements([""]);
+          reset();
+        } else {
+          throw new Error("Failed to create brief");
+        }
       }
     } catch (error) {
-      toast.error("Error creating brief");
+      toast.error(isEditMode ? "Error updating brief" : "Error creating brief");
     } finally {
       setIsSubmitting(false);
     }
@@ -84,6 +132,18 @@ export default function BriefCreationForm({ userId }: { userId: string }) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      {/* Form Header */}
+      <div className="pb-4 border-b">
+        <h2 className="text-xl font-semibold text-gray-900">
+          {isEditMode ? "Edit Brief" : "Create New Brief"}
+        </h2>
+        <p className="text-gray-600 text-sm mt-1">
+          {isEditMode
+            ? "Update your manufacturing requirements and specifications"
+            : "Describe your manufacturing needs to find the right manufacturer"}
+        </p>
+      </div>
+
       {/* Title */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -114,6 +174,29 @@ export default function BriefCreationForm({ userId }: { userId: string }) {
           <p className="mt-1 text-sm text-red-600">
             {errors.description.message}
           </p>
+        )}
+
+        {/* AI Enhanced Description Preview */}
+        {initialData?.aiEnhancedDescription && (
+          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-blue-900">
+                AI-Enhanced Version
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  setValue("description", initialData.aiEnhancedDescription)
+                }
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                Use This Version
+              </button>
+            </div>
+            <p className="text-sm text-gray-700">
+              {initialData.aiEnhancedDescription}
+            </p>
+          </div>
         )}
       </div>
 
@@ -202,6 +285,7 @@ export default function BriefCreationForm({ userId }: { userId: string }) {
                   type="button"
                   onClick={() => removeRequirement(index)}
                   className="px-3 py-2 text-red-600 hover:text-red-800"
+                  title="Remove requirement"
                 >
                   <Trash2 size={20} />
                 </button>
@@ -233,14 +317,35 @@ export default function BriefCreationForm({ userId }: { userId: string }) {
         )}
       </div>
 
-      {/* Submit */}
-      <div className="flex justify-end">
+      {/* Submit Button */}
+      <div className="flex justify-end gap-3 pt-4 border-t">
+        {isEditMode && (
+          <button
+            type="button"
+            onClick={() =>
+              (window.location.href = `/briefs/${initialData?.id}`)
+            }
+            className="px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+        )}
         <button
           type="submit"
           disabled={isSubmitting}
-          className="px-6 py-3 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isSubmitting ? "Creating..." : "Create Brief"}
+          {isSubmitting ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              {isEditMode ? "Saving..." : "Creating..."}
+            </>
+          ) : (
+            <>
+              <Save size={18} />
+              {isEditMode ? "Save Changes" : "Create Brief"}
+            </>
+          )}
         </button>
       </div>
     </form>
