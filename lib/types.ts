@@ -1,3 +1,5 @@
+import { Brief, User, Proposal } from "./generated/prisma/client";
+
 export interface Capability {
   id: string;
   name: string;
@@ -46,4 +48,16 @@ export interface Manufacturer {
   rating: number;
   matchScore: number;
   isBookmarked: boolean;
+}
+export interface AiAssistantLog {
+  id: String;
+  prompt: String;
+  response: String;
+  metadata: JSON;
+  userId: String;
+  user: User;
+  briefId: String;
+  brief?: Brief;
+  proposalId?: String;
+  proposal: Proposal;
 }
