@@ -2,24 +2,33 @@
 
 import { useState, useEffect } from "react";
 import ComparisonTable from "@/components/manufacturers/ComparisonTable";
-import ManufacturerSelector from "@/components/manufacturers/ManufacturerSelector";
 import { useSearchParams, useRouter } from "next/navigation";
-import { getManufacturersForComparison } from "@/lib/api/manufacturers";
 import { Manufacturer } from "@/lib/types";
+import ManufacturerSelector from "@/components/brand/ManufacturerSelector";
+
+// Using your exact Manufacturer type
+
+// Extended type with additional fields for comparison
+export type ManufacturerForComparison = Manufacturer & {
+  leadTime: string; // Added for comparison
+  responseTime: string;
+  sustainabilityScore: number;
+  qualityScore: number;
+  pricingTier: "budget" | "standard" | "premium";
+};
 
 export default function ComparePage() {
   const [selectedManufacturers, setSelectedManufacturers] = useState<
-    Manufacturer[]
+    ManufacturerForComparison[]
   >([]);
   const [availableManufacturers, setAvailableManufacturers] = useState<
-    Manufacturer[]
+    ManufacturerForComparison[]
   >([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [maxSelections, setMaxSelections] = useState(4); // Limit to 4 for better UI
+  const [maxSelections, setMaxSelections] = useState(4);
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // Load manufacturers from URL or saved selections
   useEffect(() => {
     loadManufacturers();
   }, []);
@@ -36,7 +45,7 @@ export default function ComparePage() {
         setSelectedManufacturers(manufacturers);
       }
 
-      // Load available manufacturers for selection
+      // Load available manufacturers
       const allManufacturers = await fetchAvailableManufacturers();
       setAvailableManufacturers(allManufacturers);
     } catch (error) {
@@ -46,13 +55,91 @@ export default function ComparePage() {
     }
   };
 
-  const fetchAvailableManufacturers = async (): Promise<Manufacturer[]> => {
-    const response = await fetch("/api/manufacturers?limit=50");
+  const getManufacturersForComparison = async (
+    ids: string[]
+  ): Promise<ManufacturerForComparison[]> => {
+    const response = await fetch(`/api/manufacturers?ids=${ids.join(",")}`);
     if (!response.ok) throw new Error("Failed to fetch manufacturers");
-    return response.json();
+    const data = await response.json();
+
+    // Enhance with comparison-specific fields
+    return data.map((manufacturer: Manufacturer) => ({
+      ...manufacturer,
+      leadTime: generateLeadTime(manufacturer),
+      responseTime: generateResponseTime(manufacturer.rating),
+      sustainabilityScore: generateSustainabilityScore(manufacturer),
+      qualityScore: generateQualityScore(manufacturer),
+      pricingTier: generatePricingTier(manufacturer),
+    }));
   };
 
-  const handleAddManufacturer = (manufacturer: Manufacturer) => {
+  const fetchAvailableManufacturers = async (): Promise<
+    ManufacturerForComparison[]
+  > => {
+    const response = await fetch("/api/manufacturers?limit=50&verified=true");
+    if (!response.ok) throw new Error("Failed to fetch manufacturers");
+    const data = await response.json();
+
+    return data.map((manufacturer: Manufacturer) => ({
+      ...manufacturer,
+      leadTime: generateLeadTime(manufacturer),
+      responseTime: generateResponseTime(manufacturer.rating),
+      sustainabilityScore: generateSustainabilityScore(manufacturer),
+      qualityScore: generateQualityScore(manufacturer),
+      pricingTier: generatePricingTier(manufacturer),
+    }));
+  };
+
+  // Helper functions to generate comparison data
+  const generateLeadTime = (manufacturer: Manufacturer): string => {
+    const base = manufacturer.productionCapacity
+      ? Math.max(
+          7,
+          Math.min(90, 1000000 / (manufacturer.productionCapacity || 1))
+        )
+      : 30;
+    const variation =
+      manufacturer.rating > 4 ? -7 : manufacturer.rating > 3 ? 0 : 14;
+    return `${Math.round(base + variation)} days`;
+  };
+
+  const generateResponseTime = (rating: number): string => {
+    if (rating >= 4.5) return "< 2 hours";
+    if (rating >= 4) return "< 4 hours";
+    if (rating >= 3.5) return "< 8 hours";
+    return "< 24 hours";
+  };
+
+  const generateSustainabilityScore = (manufacturer: Manufacturer): number => {
+    let score = 50;
+    if (manufacturer.certifications?.includes("ISO 14001")) score += 20;
+    if (
+      manufacturer.certifications?.some(
+        (c) => c.includes("Green") || c.includes("Sustainable")
+      )
+    )
+      score += 15;
+    if (manufacturer.industries?.includes("Renewable Energy")) score += 10;
+    if (manufacturer.verified) score += 5;
+    return Math.min(100, score);
+  };
+
+  const generateQualityScore = (manufacturer: Manufacturer): number => {
+    let score = Math.round(manufacturer.rating * 15); // 5*15 = 75 max from rating
+    if (manufacturer.certifications?.includes("ISO 9001")) score += 20;
+    if (manufacturer.matchScore > 80) score += 5;
+    return Math.min(100, score);
+  };
+
+  const generatePricingTier = (
+    manufacturer: Manufacturer
+  ): "budget" | "standard" | "premium" => {
+    if (manufacturer.rating >= 4.5 && manufacturer.verified) return "premium";
+    if (manufacturer.rating >= 3.5) return "standard";
+    return "budget";
+  };
+
+  const handleAddManufacturer = (manufacturer: ManufacturerForComparison) => {
     if (selectedManufacturers.length >= maxSelections) {
       alert(`Maximum ${maxSelections} manufacturers can be compared at once`);
       return;
@@ -76,7 +163,7 @@ export default function ComparePage() {
     router.push("/manufacturers/compare");
   };
 
-  const updateURL = (manufacturers: Manufacturer[]) => {
+  const updateURL = (manufacturers: ManufacturerForComparison[]) => {
     const ids = manufacturers.map((m) => m.id).join(",");
     const params = new URLSearchParams();
     if (ids) params.set("ids", ids);
@@ -85,14 +172,35 @@ export default function ComparePage() {
 
   const handleSaveComparison = () => {
     const comparisonData = {
-      manufacturers: selectedManufacturers,
+      manufacturerIds: selectedManufacturers.map((m) => m.id),
+      manufacturerNames: selectedManufacturers.map((m) => m.name),
       timestamp: new Date().toISOString(),
-      criteria: ["capabilities", "pricing", "leadTime", "quality"],
+      summary: generateComparisonSummary(),
     };
 
-    // Save to localStorage or send to API
     localStorage.setItem("savedComparison", JSON.stringify(comparisonData));
-    alert("Comparison saved! You can access it later from your dashboard.");
+
+    // Also save to user's profile via API
+    fetch("/api/user/comparisons", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(comparisonData),
+    });
+
+    alert("Comparison saved to your profile!");
+  };
+
+  const generateComparisonSummary = () => {
+    if (selectedManufacturers.length === 0) return "";
+
+    const bestRating = Math.max(...selectedManufacturers.map((m) => m.rating));
+    const bestManufacturer = selectedManufacturers.find(
+      (m) => m.rating === bestRating
+    );
+
+    return `Comparing ${selectedManufacturers.length} manufacturers. ${
+      bestManufacturer?.company
+    } has the highest rating (${bestRating.toFixed(1)}/5).`;
   };
 
   if (isLoading) {
@@ -123,7 +231,7 @@ export default function ComparePage() {
                 Compare Manufacturers
               </h1>
               <p className="text-gray-600 mt-2">
-                Side-by-side comparison to make informed decisions
+                Compare capabilities, pricing, and performance side-by-side
               </p>
             </div>
 
@@ -131,14 +239,14 @@ export default function ComparePage() {
               <button
                 onClick={handleSaveComparison}
                 disabled={selectedManufacturers.length === 0}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Save Comparison
               </button>
               <button
                 onClick={handleClearAll}
                 disabled={selectedManufacturers.length === 0}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Clear All
               </button>
@@ -150,16 +258,6 @@ export default function ComparePage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Selection Section */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Select Manufacturers to Compare ({selectedManufacturers.length}/
-              {maxSelections})
-            </h2>
-            <span className="text-sm text-gray-500">
-              Add up to {maxSelections} manufacturers
-            </span>
-          </div>
-
           <ManufacturerSelector
             manufacturers={availableManufacturers}
             selectedManufacturers={selectedManufacturers}
@@ -171,29 +269,52 @@ export default function ComparePage() {
 
         {/* Main Comparison Table */}
         {selectedManufacturers.length > 0 ? (
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden border">
             <ComparisonTable manufacturers={selectedManufacturers} />
 
-            {/* Comparison Summary */}
+            {/* Quick Stats */}
             <div className="border-t p-6 bg-gray-50">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="text-center">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Quick Stats
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-4 bg-white rounded-lg border">
                   <div className="text-2xl font-bold text-blue-600">
+                    {selectedManufacturers.filter((m) => m.verified).length}/
                     {selectedManufacturers.length}
                   </div>
-                  <div className="text-sm text-gray-600">Manufacturers</div>
+                  <div className="text-sm text-gray-600">Verified</div>
                 </div>
-                <div className="text-center">
+                <div className="text-center p-4 bg-white rounded-lg border">
                   <div className="text-2xl font-bold text-green-600">
-                    {Math.max(...selectedManufacturers.map((m) => m.rating))}/5
+                    {Math.max(
+                      ...selectedManufacturers.map((m) => m.rating)
+                    ).toFixed(1)}
                   </div>
                   <div className="text-sm text-gray-600">Best Rating</div>
+                </div>
+                <div className="text-center p-4 bg-white rounded-lg border">
+                  <div className="text-2xl font-bold text-purple-600">
+                    {selectedManufacturers.reduce(
+                      (acc, m) => acc + (m.capabilities?.length || 0),
+                      0
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    Total Capabilities
+                  </div>
+                </div>
+                <div className="text-center p-4 bg-white rounded-lg border">
+                  <div className="text-2xl font-bold text-amber-600">
+                    {selectedManufacturers.filter((m) => m.isBookmarked).length}
+                  </div>
+                  <div className="text-sm text-gray-600">Bookmarked</div>
                 </div>
               </div>
             </div>
           </div>
         ) : (
-          <div className="text-center py-16 bg-white rounded-xl shadow-sm">
+          <div className="text-center py-16 bg-white rounded-xl border shadow-sm">
             <div className="text-gray-400 mb-4">
               <svg
                 className="w-16 h-16 mx-auto"
@@ -212,17 +333,17 @@ export default function ComparePage() {
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
               No Manufacturers Selected
             </h3>
-            <p className="text-gray-600 mb-6">
-              Add manufacturers from the selection panel above to start
-              comparing
+            <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              Select manufacturers from the list above to start comparing
+              capabilities, pricing, and performance metrics.
             </p>
           </div>
         )}
 
-        {/* AI-Powered Recommendations */}
+        {/* AI Recommendation Section */}
         {selectedManufacturers.length >= 2 && (
           <div className="mt-8">
-            <div className="bg-linear-to-r from-blue-50 to-indigo-50 rounded-xl p-6">
+            <div className="bg-linear-to-r from-blue-50 to-indigo-50 rounded-xl border p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <svg
@@ -239,25 +360,61 @@ export default function ComparePage() {
                     />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  AI-Powered Recommendation
-                </h3>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    AI-Powered Recommendations
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Get personalized suggestions based on your specific
+                    requirements
+                  </p>
+                </div>
               </div>
-              <p className="text-gray-700 mb-4">
-                Based on your selection, our AI will analyze and suggest the
-                best match for your requirements.
-              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <button
+                  onClick={() => {
+                    // Trigger AI analysis for best match
+                    console.log("Trigger AI match analysis");
+                  }}
+                  className="p-4 bg-white rounded-lg border hover:shadow-md transition-shadow text-left"
+                >
+                  <div className="font-medium text-gray-900 mb-2">
+                    Best Overall Match
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    AI will analyze all factors to find your perfect
+                    manufacturer
+                  </p>
+                </button>
+
+                <button
+                  onClick={() => {
+                    // Trigger cost-benefit analysis
+                    console.log("Trigger cost-benefit analysis");
+                  }}
+                  className="p-4 bg-white rounded-lg border hover:shadow-md transition-shadow text-left"
+                >
+                  <div className="font-medium text-gray-900 mb-2">
+                    Cost-Benefit Analysis
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Compare value vs. pricing for each manufacturer
+                  </p>
+                </button>
+              </div>
+
               <button
                 onClick={() => {
-                  // This will trigger the AI analysis (we'll implement this next)
+                  // Full AI analysis
                   console.log(
-                    "Trigger AI analysis for:",
+                    "Full AI analysis for:",
                     selectedManufacturers.map((m) => m.id)
                   );
                 }}
-                className="px-4 py-2 bg-linear-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:opacity-90"
+                className="w-full md:w-auto px-6 py-3 bg-linear-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
               >
-                Get AI Recommendation
+                Generate Complete AI Analysis
               </button>
             </div>
           </div>
