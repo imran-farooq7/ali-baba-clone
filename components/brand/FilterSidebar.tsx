@@ -285,10 +285,11 @@ export default function FilterSidebar({
       <div className="pt-6 border-t">
         <div className="text-center">
           <p className="text-sm text-gray-600">
-            {Object.values(selectedFilters).reduce((count, filter) => {
+            {Object.values(selectedFilters).reduce((count: number, filter) => {
               if (Array.isArray(filter)) return count + filter.length;
-              if (typeof filter === "boolean" && filter) return count + 1;
-              if (filter !== null) return count + 1;
+              if (typeof filter === "boolean")
+                return filter ? count + 1 : count;
+              if (typeof filter === "number") return count + 1;
               return count;
             }, 0)}{" "}
             active filters

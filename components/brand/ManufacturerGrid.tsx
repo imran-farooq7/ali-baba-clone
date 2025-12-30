@@ -1,8 +1,8 @@
 // components/manufacturers/ManufacturerGrid.tsx
 "use client";
 
+import { Manufacturer } from "@/lib/types";
 import ManufacturerCard from "./ManufacturerCard";
-import { Manufacturer } from "@/types/manufacturer";
 
 interface ManufacturerGridProps {
   manufacturers: Manufacturer[];

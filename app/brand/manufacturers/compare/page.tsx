@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import ComparisonTable from "@/components/manufacturers/ComparisonTable";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Manufacturer } from "@/lib/types";
 import ManufacturerSelector from "@/components/brand/ManufacturerSelector";
+import ComparisonTable from "@/components/brand/ComparisonTable";
 
 // Using your exact Manufacturer type
 
