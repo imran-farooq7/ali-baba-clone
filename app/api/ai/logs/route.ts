@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
         prompt: prompt.substring(0, 5000), // Limit length
         response: response.substring(0, 10000), // Limit length
         metadata: metadata || {},
-        model: metadata?.model || "gemini-1.5-flash",
+        model: "gemini-2.5-flash",
         createdAt: new Date(),
       },
     });

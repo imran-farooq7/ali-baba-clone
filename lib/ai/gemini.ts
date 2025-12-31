@@ -31,14 +31,15 @@ let geminiInstance: any = null;
 export const getGeminiClient = () => {
   if (geminiInstance) return geminiInstance;
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY!;
+  console.log(apiKey, "from gemini ai");
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY is not configured");
   }
 
   const genAI = new GoogleGenerativeAI(apiKey);
   geminiInstance = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model: "gemini-2.5-flash",
     generationConfig: {
       temperature: 0.7,
       topP: 0.9,
@@ -131,28 +132,22 @@ export const generateAIResponse = async (
   context?: AIContext
 ): Promise<AIResponse> => {
   try {
-    const model = getGeminiClient();
-    const systemPrompt = createSystemPrompt(context);
+    // Use server-side API route instead of direct client-side call
+    const response = await fetch("/api/ai/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt, context }),
+    });
 
-    // Format conversation history if available
-    const history = context?.recentMessages?.slice(-5) || [];
-    const formattedHistory = history
-      .map((msg) => `${msg.role}: ${msg.content}`)
-      .join("\n");
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "API request failed");
+    }
 
-    const fullPrompt = `${systemPrompt}
-    
-${formattedHistory ? `Conversation History:\n${formattedHistory}\n\n` : ""}
-User: ${prompt}
-
-Assistant:`;
-
-    const result = await model.generateContent(fullPrompt);
-    const response = await result.response;
-    const text = response.text();
+    const data = await response.json();
 
     // Parse the response
-    const parsedResponse = parseAIResponse(text);
+    const parsedResponse = parseAIResponse(data.response.message);
 
     // Log the interaction
     await logAIInteraction({
@@ -160,18 +155,28 @@ Assistant:`;
       briefId: context?.briefId,
       proposalId: context?.proposalId,
       prompt,
-      response: text,
+      response: data.response.message,
       metadata: {
-        model: "gemini-1.5-flash",
+        source: "api-route",
         conversationId: context?.conversationId,
-        parsedResponse,
       },
     });
 
     return parsedResponse;
   } catch (error) {
     console.error("AI Generation Error:", error);
-    throw new Error("Failed to generate AI response. Please try again.");
+
+    // Fallback to mock response
+    return {
+      message:
+        "I apologize, but I'm having trouble connecting to the AI service. Here are some general manufacturing tips: Always verify supplier certifications, request product samples, and establish clear communication channels.",
+      suggestions: [
+        "Check manufacturer ISO certifications",
+        "Request references from past clients",
+        "Define clear quality standards",
+      ],
+      requiresAction: true,
+    };
   }
 };
 

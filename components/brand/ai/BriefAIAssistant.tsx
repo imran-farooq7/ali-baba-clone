@@ -47,7 +47,7 @@ export default function BriefAIAssistant({
       window.dispatchEvent(
         new CustomEvent("open-ai-chat", {
           detail: {
-            message: `Help me generate better content for my brief about ${briefData.category}. I need a more compelling description and requirements.`,
+            message: `Help me generate better content for my brief about ${briefData.title}. I need a more compelling description and requirements.`,
           },
         })
       );

@@ -29,6 +29,7 @@ import BriefStatusBadge from "@/components/brand/BriefStatusBadge";
 import ProposalsSection from "@/components/brand/ProposalsSection";
 import AnalyticsSection from "@/components/brand/AnalyticsSection";
 import ChatButton from "@/components/chat/ui/Chat-button";
+import BriefAIAssistant from "@/components/brand/ai/BriefAIAssistant";
 
 interface BriefDetailPageProps {
   params: Promise<{ id: string }>;
@@ -279,6 +280,7 @@ export default async function BriefDetailPage({
 
           {/* Right Column - Sidebar */}
           <div className="space-y-6">
+            <BriefAIAssistant briefData={brief} briefId={brief.id} />
             {/* Stats Card */}
             <div className="bg-white rounded-xl border shadow-sm p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">
