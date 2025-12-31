@@ -1,19 +1,8 @@
-import { getCurrentUser } from "@/lib/auth";
-import ManufacturerDashboardLayout from "@/components/manufacturer/ManufacturerDashboardLayout";
-import CertificationUpload from "@/components/manufacturer/CertificationUpload";
 import CapabilitySetupForm from "@/components/manufacturer/CapabilitySetupForm";
+import CertificationUpload from "@/components/manufacturer/CertificationUpload";
 import ManufacturerProfileView from "@/components/manufacturer/ManufacturerProfileView";
-import {
-  AlertCircle,
-  CheckCircle,
-  Eye,
-  BarChart,
-  TrendingUp,
-  Users,
-  Package,
-  Globe,
-  MapPin,
-} from "lucide-react";
+import { getCurrentUser } from "@/lib/auth";
+import { AlertCircle, CheckCircle, Eye } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
