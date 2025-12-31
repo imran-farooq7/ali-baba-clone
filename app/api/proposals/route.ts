@@ -1,91 +1,121 @@
-// app/api/proposals/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/prisma/prisma";
-import { ProposalStatus } from "@/lib/generated/prisma/enums";
+import { getCurrentUser } from "@/lib/auth";
 
 // GET /api/proposals - Get proposals with filters
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
+
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
-    const userType = searchParams.get("userType"); // 'brand' or 'manufacturer'
     const status = searchParams.get("status");
     const briefId = searchParams.get("briefId");
     const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
+    const limit = parseInt(searchParams.get("limit") || "20");
     const skip = (page - 1) * limit;
 
-    // Build where clause
-    const where: any = {};
+    // Build where clause based on user type and filters
+    let whereClause: any = {};
 
-    if (userType === "brand") {
-      where.brandId = user.id;
-    } else if (userType === "manufacturer") {
-      where.manufacturerId = user.id;
+    if (user.type === "MANUFACTURER") {
+      whereClause.manufacturerId = user.id;
+    } else if (user.type === "BRAND") {
+      whereClause.brandId = user.id;
+    } else if (user.type !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    if (status && status !== "all") {
-      where.status = status.toUpperCase();
+    // Apply filters
+    if (status) {
+      whereClause.status = status;
     }
 
     if (briefId) {
-      where.briefId = briefId;
+      whereClause.briefId = briefId;
     }
 
-    // Get proposals with pagination
+    // Fetch proposals with related data
     const [proposals, total] = await Promise.all([
       prisma.proposal.findMany({
-        where,
+        where: whereClause,
         include: {
           brief: {
             select: {
               id: true,
               title: true,
-              budget: true,
+              category: true,
+              status: true,
               brand: {
-                select: { id: true, name: true, company: true, avatar: true },
+                select: { name: true, company: true, avatar: true },
               },
             },
           },
           manufacturer: {
-            select: { id: true, name: true, company: true, avatar: true },
+            select: {
+              id: true,
+              name: true,
+              company: true,
+              avatar: true,
+              verified: true,
+            },
           },
           brand: {
-            select: { id: true, name: true, company: true, avatar: true },
+            select: {
+              id: true,
+              name: true,
+              company: true,
+              avatar: true,
+            },
           },
           counterProposal: {
-            select: { id: true, price: true, status: true },
+            select: {
+              id: true,
+              status: true,
+              price: true,
+              timelineDays: true,
+            },
           },
-          _count: {
-            select: { originalProposal: true },
+          originalProposal: {
+            select: {
+              id: true,
+              status: true,
+              price: true,
+              timelineDays: true,
+            },
           },
         },
         orderBy: { createdAt: "desc" },
         skip,
         take: limit,
       }),
-      prisma.proposal.count({ where }),
+      prisma.proposal.count({ where: whereClause }),
     ]);
 
+    // Calculate stats for the current user
+    const stats = await calculateProposalStats(user.id, user.type);
+
     return NextResponse.json({
-      success: true,
-      data: proposals,
+      proposals,
       pagination: {
-        total,
         page,
         limit,
+        total,
         pages: Math.ceil(total / limit),
       },
+      stats,
+      filters: {
+        status: status || "all",
+        briefId: briefId || null,
+      },
     });
-  } catch (error) {
-    console.error("Error fetching proposals:", error);
+  } catch (error: any) {
+    console.error("Proposals fetch error:", error);
     return NextResponse.json(
-      { error: "Failed to fetch proposals" },
+      { error: "Failed to fetch proposals", details: error.message },
       { status: 500 }
     );
   }
@@ -95,20 +125,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser();
+
     if (!user || user.type !== "MANUFACTURER") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized. Only manufacturers can create proposals." },
+        { status: 401 }
+      );
     }
 
     const data = await request.json();
-    const {
-      briefId,
-      message,
-      price,
-      timelineDays,
-      terms,
-      attachments = [],
-      status = "DRAFT",
-    } = data;
+    const { briefId, message, price, timelineDays, terms, attachments } = data;
 
     // Validate required fields
     if (!briefId || !message || !price || !timelineDays) {
@@ -118,36 +144,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get brief to validate
+    // Check if brief exists and is published
     const brief = await prisma.brief.findUnique({
-      where: { id: briefId },
+      where: { id: briefId, status: "PUBLISHED" },
       include: { brand: true },
     });
 
     if (!brief) {
-      return NextResponse.json({ error: "Brief not found" }, { status: 404 });
-    }
-
-    // Check if brief is published
-    if (brief.status !== "PUBLISHED") {
       return NextResponse.json(
-        { error: "Brief is not available for proposals" },
-        { status: 400 }
+        { error: "Brief not found or not published" },
+        { status: 404 }
       );
     }
 
-    // Check if manufacturer already submitted a proposal
+    // Check if manufacturer already submitted a proposal for this brief
     const existingProposal = await prisma.proposal.findFirst({
       where: {
         briefId,
         manufacturerId: user.id,
-        status: { in: ["DRAFT", "SUBMITTED", "UNDER_REVIEW", "NEGOTIATION"] },
+        status: { not: "WITHDRAWN" },
       },
     });
 
     if (existingProposal) {
       return NextResponse.json(
-        { error: "You already have a proposal for this brief" },
+        { error: "You have already submitted a proposal for this brief" },
         { status: 400 }
       );
     }
@@ -159,46 +180,99 @@ export async function POST(request: NextRequest) {
         price: parseFloat(price),
         timelineDays: parseInt(timelineDays),
         terms: terms || {},
-        attachments,
-        status: status as ProposalStatus,
+        attachments: attachments || [],
+        status: "DRAFT",
         briefId,
         manufacturerId: user.id,
         brandId: brief.brandId,
-        currency: "USD",
-        submittedAt: status === "SUBMITTED" ? new Date() : null,
       },
       include: {
         brief: {
-          select: { title: true, brand: { select: { name: true } } },
+          select: {
+            title: true,
+            brand: {
+              select: { name: true, company: true },
+            },
+          },
         },
         manufacturer: {
-          select: { name: true, company: true },
+          select: {
+            name: true,
+            company: true,
+            avatar: true,
+          },
         },
       },
     });
 
-    // Update brief proposals count
+    // Increment brief proposals count
     await prisma.brief.update({
       where: { id: briefId },
       data: { proposalsCount: { increment: 1 } },
     });
 
+    // Create notification for brand (you'll implement this later)
+    // await createNotification(...)
+
+    return NextResponse.json({
+      success: true,
+      proposal,
+      message: "Proposal created successfully",
+    });
+  } catch (error: any) {
+    console.error("Proposal creation error:", error);
+
+    if (error.code === "P2003") {
+      return NextResponse.json(
+        { error: "Invalid brief or manufacturer" },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
-      {
-        success: true,
-        data: proposal,
-        message:
-          status === "SUBMITTED"
-            ? "Proposal submitted successfully!"
-            : "Proposal saved as draft",
-      },
-      { status: 201 }
-    );
-  } catch (error) {
-    console.error("Error creating proposal:", error);
-    return NextResponse.json(
-      { error: "Failed to create proposal" },
+      { error: "Failed to create proposal", details: error.message },
       { status: 500 }
     );
   }
 }
+
+// Pure function: Calculate proposal stats
+const calculateProposalStats = async (userId: string, userType: string) => {
+  let whereClause: any = {};
+
+  if (userType === "MANUFACTURER") {
+    whereClause.manufacturerId = userId;
+  } else if (userType === "BRAND") {
+    whereClause.brandId = userId;
+  }
+
+  const proposals = await prisma.proposal.groupBy({
+    by: ["status"],
+    where: whereClause,
+    _count: { _all: true },
+    _avg: { price: true },
+  });
+
+  const total = proposals.reduce((sum, p) => sum + (p._count?._all || 0), 0);
+
+  const stats = {
+    total,
+    byStatus: proposals.reduce(
+      (acc, p) => ({
+        ...acc,
+        [p.status]: p._count?._all,
+      }),
+      {}
+    ),
+    averageValue: proposals[0]?._avg?.price || 0,
+    conversionRate: 0, // Will calculate from accepted/total
+  };
+
+  if (total > 0) {
+    const accepted =
+      proposals.find((p) => p.status === "ACCEPTED")?._count?._all || 0;
+    stats.conversionRate = Math.round((accepted / total) * 100);
+  }
+
+  return stats;
+};

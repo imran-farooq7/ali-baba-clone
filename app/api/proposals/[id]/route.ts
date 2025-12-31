@@ -1,8 +1,8 @@
 // app/api/proposals/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/db/prisma";
-import { ProposalStatus } from "@/app/generated/prisma/enums";
+import { prisma } from "@/prisma/prisma";
+import { ProposalStatus } from "@/lib/generated/prisma/enums";
 
 // GET /api/proposals/[id] - Get single proposal
 export async function GET(
