@@ -1,5 +1,5 @@
-import { getCurrentUser } from "@/lib/auth";
 import ManufacturerEditForm from "@/components/manufacturer/ManufacturerEditForm";
+import { getCurrentUser } from "@/lib/auth";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
