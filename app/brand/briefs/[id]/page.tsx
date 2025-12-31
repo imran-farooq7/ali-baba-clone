@@ -174,10 +174,13 @@ export default async function BriefDetailPage({
                 <h2 className="text-lg font-semibold text-gray-900">
                   Brief Details
                 </h2>
-                <button className="flex items-center gap-2 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg">
+                <Link
+                  href={`/brand/briefs/${brief.id}/edit`}
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg"
+                >
                   <Edit className="h-4 w-4" />
                   Edit
-                </button>
+                </Link>
               </div>
 
               <div className="space-y-4">

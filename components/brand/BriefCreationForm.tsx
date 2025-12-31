@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Plus, Trash2, Save } from "lucide-react";
 import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 const briefSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters"),
@@ -35,6 +36,7 @@ export default function BriefCreationForm({
 }: BriefCreationFormProps) {
   const [requirements, setRequirements] = useState<string[]>([""]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
 
   const {
     register,
@@ -106,6 +108,7 @@ export default function BriefCreationForm({
       if (isEditMode && onUpdate) {
         // Edit mode - call onUpdate
         await onUpdate(data);
+        router.push("/brand/briefs");
       } else {
         // Create mode - original logic
         const response = await fetch("/api/briefs", {

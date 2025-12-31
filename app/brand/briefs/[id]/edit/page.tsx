@@ -12,7 +12,7 @@ export default function EditBriefPage() {
   const router = useRouter();
   const params = useParams();
   const briefId = params.id as string;
-
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const [brief, setBrief] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +55,7 @@ export default function EditBriefPage() {
 
   const handleAIEnhance = async () => {
     try {
+      setIsEnhancing(true);
       const response = await fetch(`/api/ai/brief-enhance`, {
         method: "POST",
         headers: {
@@ -70,16 +71,16 @@ export default function EditBriefPage() {
         throw new Error("Failed to enhance brief with AI");
       }
 
-      const enhancedData = await response.json();
+      const enhancedDescription = await response.text();
 
       // Update form with AI suggestions
-      if (enhancedData.enhancedDescription) {
+      if (enhancedDescription && enhancedDescription.trim().length > 0) {
         setBrief((prev: Brief) =>
           prev
             ? {
                 ...prev,
-                aiEnhancedDescription: enhancedData.enhancedDescription,
-                aiSuggestions: enhancedData.suggestions || prev.aiSuggestions,
+                aiEnhancedDescription: enhancedDescription,
+                aiSuggestions: enhancedDescription || prev.aiSuggestions,
               }
             : null
         );
@@ -88,6 +89,8 @@ export default function EditBriefPage() {
     } catch (err) {
       toast.error("AI enhancement failed");
       console.error("AI enhancement error:", err);
+    } finally {
+      setIsEnhancing(false);
     }
   };
 
@@ -114,9 +117,8 @@ export default function EditBriefPage() {
       toast.success("Brief updated successfully!");
 
       // Redirect after successful save
-      setTimeout(() => {
-        router.push(`brand/briefs/${briefId}`);
-      }, 1000);
+
+      // router.replace(`brand/briefs/${briefId}`);
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to update brief"
@@ -200,8 +202,14 @@ export default function EditBriefPage() {
                 onClick={handleAIEnhance}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-linear-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:opacity-90"
               >
-                <Sparkles className="h-4 w-4" />
-                Enhance with AI
+                {isEnhancing ? (
+                  <Loader2 className="animate-spin h-4 w-4" />
+                ) : (
+                  <span className="flex gap-2 items-center">
+                    <Sparkles className="h-4 w-4" />
+                    Enhance with AI
+                  </span>
+                )}
               </button>
             </div>
           </div>
