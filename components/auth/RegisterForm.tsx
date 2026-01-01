@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Mail,
   Lock,
@@ -17,13 +17,15 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
     confirmPassword: "",
     company: "",
-    userType: "brand", // 'brand' or 'manufacturer'
+    userType: searchParams.get("type"), // 'brand' or 'manufacturer'
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);

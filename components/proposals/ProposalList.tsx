@@ -1,625 +1,505 @@
-// components/proposals/ProposalList.tsx
 "use client";
 
-import { useState, useEffect } from "react";
 import {
-  Search,
-  Filter,
+  BarChart,
+  Calendar,
+  Clock,
+  DollarSign,
+  Download,
   Eye,
   MessageSquare,
-  CheckCircle,
-  XCircle,
-  Clock,
-  AlertCircle,
-  DollarSign,
-  Calendar,
-  TrendingUp,
-  TrendingDown,
-  Users,
-  Package,
-  FileText,
-  ChevronRight,
   MoreVertical,
+  Search,
 } from "lucide-react";
-import Link from "next/link";
-import { formatDistanceToNow } from "date-fns";
-
-interface Proposal {
-  id: string;
-  price: number;
-  timelineDays: number;
-  message: string;
-  status:
-    | "DRAFT"
-    | "SUBMITTED"
-    | "PENDING_REVIEW"
-    | "COUNTERED"
-    | "ACCEPTED"
-    | "REJECTED"
-    | "WITHDRAWN";
-  submittedAt: string;
-  manufacturer: {
-    id: string;
-    company: string;
-    name: string;
-    verified: boolean;
-    capabilities: string[];
-  };
-  brief: {
-    id: string;
-    title: string;
-    budget: number;
-  };
-  counterPrice?: number;
-  counterTimeline?: number;
-}
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import ProposalStatusBadge from "./ProposalStatusBadge";
 
 interface ProposalListProps {
-  brandId: string;
-  briefId?: string;
+  proposals: any[];
+  pagination: any;
+  stats: any;
+  filters: any;
+  userType: "BRAND" | "MANUFACTURER" | "ADMIN";
 }
 
-export default function ProposalList({ brandId, briefId }: ProposalListProps) {
-  const [proposals, setProposals] = useState<Proposal[]>([]);
-  const [filteredProposals, setFilteredProposals] = useState<Proposal[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function ProposalList({
+  proposals,
+  pagination,
+  stats,
+  filters,
+  userType,
+}: ProposalListProps) {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<
-    "newest" | "price-low" | "price-high" | "timeline"
-  >("newest");
+  const [statusFilter, setStatusFilter] = useState(filters.status);
+  const [sortBy, setSortBy] = useState("newest");
+  const [selectedProposals, setSelectedProposals] = useState<string[]>([]);
 
-  // Fetch proposals
-  useEffect(() => {
-    const fetchProposals = async () => {
-      setLoading(true);
-      try {
-        const url = briefId
-          ? `/api/proposals?briefId=${briefId}`
-          : `/api/proposals?brandId=${brandId}`;
-
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (data.success) {
-          setProposals(data.data);
-          setFilteredProposals(data.data);
-        }
-      } catch (error) {
-        console.error("Error fetching proposals:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProposals();
-  }, [brandId, briefId]);
-
-  // Filter and sort proposals
-  useEffect(() => {
-    let result = [...proposals];
-
-    // Apply search
+  const filteredProposals = proposals.filter((proposal) => {
+    // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (proposal) =>
-          proposal.manufacturer.company.toLowerCase().includes(query) ||
-          proposal.brief.title.toLowerCase().includes(query) ||
-          proposal.message.toLowerCase().includes(query) ||
-          proposal.manufacturer.capabilities.some((cap) =>
-            cap.toLowerCase().includes(query)
-          )
+      return (
+        proposal.brief?.title?.toLowerCase().includes(query) ||
+        proposal.manufacturer?.company?.toLowerCase().includes(query) ||
+        proposal.brand?.company?.toLowerCase().includes(query) ||
+        proposal.message?.toLowerCase().includes(query)
       );
     }
 
-    // Apply status filter
-    if (selectedStatus !== "all") {
-      result = result.filter((proposal) => proposal.status === selectedStatus);
+    // Status filter
+    if (statusFilter !== "all" && proposal.status !== statusFilter) {
+      return false;
     }
 
-    // Apply sorting
-    result.sort((a, b) => {
-      switch (sortBy) {
-        case "newest":
-          return (
-            new Date(b.submittedAt).getTime() -
-            new Date(a.submittedAt).getTime()
-          );
-        case "price-low":
-          return a.price - b.price;
-        case "price-high":
-          return b.price - a.price;
-        case "timeline":
-          return a.timelineDays - b.timelineDays;
-        default:
-          return 0;
-      }
-    });
+    return true;
+  });
 
-    setFilteredProposals(result);
-  }, [proposals, searchQuery, selectedStatus, sortBy]);
-
-  // Format currency
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  // Get status config
-  const getStatusConfig = (status: string) => {
-    switch (status) {
-      case "ACCEPTED":
-        return {
-          color: "bg-green-100 text-green-800",
-          icon: CheckCircle,
-          label: "Accepted",
-        };
-      case "SUBMITTED":
-      case "PENDING_REVIEW":
-        return {
-          color: "bg-blue-100 text-blue-800",
-          icon: Clock,
-          label: "Under Review",
-        };
-      case "COUNTERED":
-        return {
-          color: "bg-yellow-100 text-yellow-800",
-          icon: AlertCircle,
-          label: "Countered",
-        };
-      case "REJECTED":
-        return {
-          color: "bg-red-100 text-red-800",
-          icon: XCircle,
-          label: "Rejected",
-        };
-      case "WITHDRAWN":
-        return {
-          color: "bg-gray-100 text-gray-800",
-          icon: XCircle,
-          label: "Withdrawn",
-        };
-      case "DRAFT":
-        return {
-          color: "bg-gray-100 text-gray-800",
-          icon: FileText,
-          label: "Draft",
-        };
+  // Sort proposals
+  const sortedProposals = [...filteredProposals].sort((a, b) => {
+    switch (sortBy) {
+      case "newest":
+        return (
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      case "oldest":
+        return (
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+      case "price-high":
+        return b.price - a.price;
+      case "price-low":
+        return a.price - b.price;
+      case "timeline-short":
+        return a.timelineDays - b.timelineDays;
+      case "timeline-long":
+        return b.timelineDays - a.timelineDays;
       default:
-        return {
-          color: "bg-gray-100 text-gray-800",
-          icon: Clock,
-          label: status,
-        };
+        return 0;
     }
-  };
+  });
 
-  // Calculate price difference percentage
-  const calculatePriceDiff = (proposalPrice: number, briefBudget: number) => {
-    return ((proposalPrice - briefBudget) / briefBudget) * 100;
-  };
-
-  // Handle proposal action
-  const handleProposalAction = async (
-    proposalId: string,
-    action: "accept" | "reject" | "counter"
-  ) => {
-    try {
-      const response = await fetch(`/api/proposals/${proposalId}/${action}`, {
-        method: "POST",
-      });
-
-      if (response.ok) {
-        // Refresh proposals
-        window.location.reload();
-      }
-    } catch (error) {
-      console.error(`Error ${action}ing proposal:`, error);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-      </div>
+  const handleProposalSelect = (id: string) => {
+    setSelectedProposals((prev) =>
+      prev.includes(id) ? prev.filter((pid) => pid !== id) : [...prev, id]
     );
-  }
+  };
+
+  const handleBulkAction = (action: string) => {
+    // Implement bulk actions (download, status change, etc.)
+    console.log("Bulk action:", action, selectedProposals);
+  };
+
+  const exportToCSV = () => {
+    // Implement CSV export
+    console.log("Exporting proposals to CSV");
+  };
 
   return (
-    <div className="bg-white rounded-lg shadow">
-      {/* Header */}
-      <div className="p-6 border-b border-gray-200">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">Proposals</h2>
-            <p className="text-sm text-gray-500">
-              {proposals.length} total •{" "}
-              {proposals.filter((p) => p.status === "SUBMITTED").length} new
-            </p>
-          </div>
-
+    <div className="space-y-6">
+      {/* Stats & Filters */}
+      <div className="bg-white rounded-xl border shadow-sm p-6">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           {/* Stats */}
-          <div className="flex items-center gap-4">
-            <div className="text-center">
-              <p className="text-sm text-gray-600">Avg. Price</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {formatCurrency(
-                  proposals.reduce((acc, p) => acc + p.price, 0) /
-                    (proposals.length || 1)
-                )}
-              </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center p-3 bg-blue-50 rounded-lg">
+              <div className="text-2xl font-bold text-gray-900">
+                {stats.total || 0}
+              </div>
+              <div className="text-sm text-gray-600">Total</div>
             </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-600">Response Rate</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {proposals.length > 0
-                  ? Math.round(
-                      (proposals.filter((p) => p.status !== "DRAFT").length /
-                        proposals.length) *
-                        100
-                    )
-                  : 0}
-                %
-              </p>
+            <div className="text-center p-3 bg-green-50 rounded-lg">
+              <div className="text-2xl font-bold text-gray-900">
+                {stats.byStatus?.ACCEPTED || 0}
+              </div>
+              <div className="text-sm text-gray-600">Accepted</div>
+            </div>
+            <div className="text-center p-3 bg-yellow-50 rounded-lg">
+              <div className="text-2xl font-bold text-gray-900">
+                {stats.byStatus?.UNDER_REVIEW || 0}
+              </div>
+              <div className="text-sm text-gray-600">Reviewing</div>
+            </div>
+            <div className="text-center p-3 bg-purple-50 rounded-lg">
+              <div className="text-2xl font-bold text-gray-900">
+                {stats.conversionRate || 0}%
+              </div>
+              <div className="text-sm text-gray-600">Conversion</div>
             </div>
           </div>
-        </div>
 
-        {/* Filters */}
-        <div className="mt-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            {/* Search */}
-            <div className="flex-1">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="Search proposals by manufacturer, brief, or capability..."
-                />
-              </div>
+          {/* Search & Filters */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search proposals..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
             </div>
 
-            {/* Filter buttons */}
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-green-500"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="all">All Status</option>
+                <option value="DRAFT">Draft</option>
                 <option value="SUBMITTED">Submitted</option>
-                <option value="PENDING_REVIEW">Under Review</option>
-                <option value="COUNTERED">Countered</option>
+                <option value="UNDER_REVIEW">Under Review</option>
+                <option value="NEGOTIATION">Negotiation</option>
                 <option value="ACCEPTED">Accepted</option>
                 <option value="REJECTED">Rejected</option>
+                <option value="COUNTERED">Countered</option>
               </select>
 
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-green-500"
+                onChange={(e) => setSortBy(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="newest">Newest First</option>
-                <option value="price-low">Price: Low to High</option>
+                <option value="oldest">Oldest First</option>
                 <option value="price-high">Price: High to Low</option>
-                <option value="timeline">Timeline: Shortest</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="timeline-short">Timeline: Shortest</option>
+                <option value="timeline-long">Timeline: Longest</option>
               </select>
             </div>
           </div>
         </div>
+
+        {/* Bulk Actions */}
+        {selectedProposals.length > 0 && (
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-600">
+                  {selectedProposals.length} proposals selected
+                </span>
+                <button
+                  onClick={() => setSelectedProposals([])}
+                  className="text-sm text-gray-500 hover:text-gray-700"
+                >
+                  Clear selection
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleBulkAction("download")}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50"
+                >
+                  <Download className="h-4 w-4" />
+                  Download
+                </button>
+                <button
+                  onClick={() => handleBulkAction("export")}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50"
+                >
+                  <BarChart className="h-4 w-4" />
+                  Export
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Proposals list */}
-      {filteredProposals.length === 0 ? (
-        <div className="p-12 text-center">
-          <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">
-            No proposals found
-          </h3>
-          <p className="text-gray-500 mt-2">
-            {proposals.length === 0
-              ? "No proposals have been submitted yet."
-              : "No proposals match your current filters."}
-          </p>
-        </div>
-      ) : (
-        <div className="divide-y divide-gray-200">
-          {filteredProposals.map((proposal) => {
-            const statusConfig = getStatusConfig(proposal.status);
-            const StatusIcon = statusConfig.icon;
-            const priceDiff = calculatePriceDiff(
-              proposal.price,
-              proposal.brief.budget
-            );
-            const isCountered = proposal.status === "COUNTERED";
-
-            return (
-              <div
-                key={proposal.id}
-                className="p-6 hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      {/* Proposals List */}
+      <div className="space-y-4">
+        {sortedProposals.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-xl border">
+            <div className="text-gray-400 mb-3">
+              <MessageSquare className="h-12 w-12 mx-auto" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              No proposals found
+            </h3>
+            <p className="text-gray-600 max-w-md mx-auto">
+              {searchQuery || statusFilter !== "all"
+                ? "Try adjusting your search or filters"
+                : userType === "MANUFACTURER"
+                ? "Submit your first proposal to get started"
+                : "No proposals have been submitted yet"}
+            </p>
+          </div>
+        ) : (
+          sortedProposals.map((proposal) => (
+            <div
+              key={proposal.id}
+              className={`bg-white rounded-xl border shadow-sm hover:shadow-md transition-shadow ${
+                selectedProposals.includes(proposal.id)
+                  ? "ring-2 ring-blue-500"
+                  : ""
+              }`}
+            >
+              <div className="p-6">
+                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
                   {/* Left side - Proposal info */}
                   <div className="flex-1">
-                    <div className="flex items-start justify-between">
+                    <div className="flex items-start justify-between mb-3">
                       <div>
-                        <div className="flex items-center gap-3">
-                          <h3 className="font-medium text-gray-900">
-                            <Link
-                              href={`/brand/proposals/${proposal.id}`}
-                              className="hover:text-green-600"
-                            >
-                              {proposal.manufacturer.company}
-                            </Link>
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {proposal.brief?.title || "Untitled Brief"}
                           </h3>
-                          {proposal.manufacturer.verified && (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                              <CheckCircle className="h-3 w-3" />
-                              Verified
-                            </span>
-                          )}
-                          <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${statusConfig.color}`}
-                          >
-                            <StatusIcon className="h-3 w-3" />
-                            {statusConfig.label}
-                          </span>
+                          <ProposalStatusBadge status={proposal.status} />
                         </div>
 
-                        <p className="text-sm text-gray-600 mt-1">
-                          For: {proposal.brief.title}
-                        </p>
-                      </div>
-
-                      <div className="hidden lg:flex items-center gap-4">
-                        {/* Quick actions */}
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() =>
-                              handleProposalAction(proposal.id, "accept")
-                            }
-                            disabled={
-                              proposal.status !== "SUBMITTED" &&
-                              proposal.status !== "COUNTERED"
-                            }
-                            className="px-3 py-1 text-sm bg-green-100 text-green-800 rounded-md hover:bg-green-200 disabled:opacity-50"
-                            title="Accept Proposal"
-                          >
-                            Accept
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleProposalAction(proposal.id, "counter")
-                            }
-                            disabled={proposal.status !== "SUBMITTED"}
-                            className="px-3 py-1 text-sm bg-yellow-100 text-yellow-800 rounded-md hover:bg-yellow-200 disabled:opacity-50"
-                            title="Send Counter Offer"
-                          >
-                            Counter
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleProposalAction(proposal.id, "reject")
-                            }
-                            disabled={
-                              proposal.status === "ACCEPTED" ||
-                              proposal.status === "REJECTED"
-                            }
-                            className="px-3 py-1 text-sm bg-red-100 text-red-800 rounded-md hover:bg-red-200 disabled:opacity-50"
-                            title="Reject Proposal"
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Proposal details */}
-                    <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {/* Price */}
-                      <div className="p-3 border border-gray-200 rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-gray-600">
-                              Proposed Price
-                            </p>
-                            <p className="text-lg font-semibold text-gray-900">
-                              {formatCurrency(proposal.price)}
-                            </p>
-                          </div>
-                          <div
-                            className={`flex items-center ${
-                              priceDiff > 0 ? "text-red-600" : "text-green-600"
-                            }`}
-                          >
-                            {priceDiff > 0 ? (
-                              <TrendingUp className="h-4 w-4" />
+                        <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                          <div className="flex items-center gap-2">
+                            {userType === "BRAND" ? (
+                              <>
+                                <div className="h-6 w-6 bg-gray-100 rounded-full overflow-hidden">
+                                  {proposal.manufacturer?.avatar && (
+                                    <img
+                                      src={proposal.manufacturer.avatar}
+                                      alt={proposal.manufacturer.company}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  )}
+                                </div>
+                                <span>{proposal.manufacturer?.company}</span>
+                              </>
                             ) : (
-                              <TrendingDown className="h-4 w-4" />
+                              <>
+                                <div className="h-6 w-6 bg-gray-100 rounded-full overflow-hidden">
+                                  {proposal.brand?.avatar && (
+                                    <img
+                                      src={proposal.brand.avatar}
+                                      alt={proposal.brand.company}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  )}
+                                </div>
+                                <span>{proposal.brand?.company}</span>
+                              </>
                             )}
-                            <span className="text-sm ml-1">
-                              {Math.abs(priceDiff).toFixed(1)}%
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            <span>
+                              Submitted{" "}
+                              {new Date(
+                                proposal.submittedAt || proposal.createdAt
+                              ).toLocaleDateString()}
                             </span>
                           </div>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Brief budget: {formatCurrency(proposal.brief.budget)}
-                        </p>
 
-                        {/* Counter price */}
-                        {isCountered && proposal.counterPrice && (
-                          <div className="mt-2 pt-2 border-t border-gray-100">
-                            <p className="text-xs text-gray-600">
-                              Your Counter:
-                            </p>
-                            <p className="text-sm font-medium text-yellow-700">
-                              {formatCurrency(proposal.counterPrice)}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Timeline */}
-                      <div className="p-3 border border-gray-200 rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-gray-600">Timeline</p>
-                            <p className="text-lg font-semibold text-gray-900">
-                              {proposal.timelineDays} days
-                            </p>
-                          </div>
-                          <Calendar className="h-5 w-5 text-gray-400" />
-                        </div>
-                        {isCountered && proposal.counterTimeline && (
-                          <div className="mt-2 pt-2 border-t border-gray-100">
-                            <p className="text-xs text-gray-600">
-                              Your Counter:
-                            </p>
-                            <p className="text-sm font-medium text-yellow-700">
-                              {proposal.counterTimeline} days
-                            </p>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Manufacturer info */}
-                      <div className="p-3 border border-gray-200 rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-gray-600">
-                              Manufacturer
-                            </p>
-                            <p className="font-medium text-gray-900">
-                              {proposal.manufacturer.name}
-                            </p>
-                          </div>
-                          <Users className="h-5 w-5 text-gray-400" />
-                        </div>
-                        <div className="mt-2">
-                          <div className="flex flex-wrap gap-1">
-                            {proposal.manufacturer.capabilities
-                              .slice(0, 3)
-                              .map((cap, index) => (
-                                <span
-                                  key={index}
-                                  className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded"
-                                >
-                                  {cap}
-                                </span>
-                              ))}
-                            {proposal.manufacturer.capabilities.length > 3 && (
-                              <span className="text-xs text-gray-500">
-                                +{proposal.manufacturer.capabilities.length - 3}{" "}
-                                more
+                          {proposal.reviewedAt && (
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-4 w-4" />
+                              <span>
+                                Reviewed{" "}
+                                {new Date(
+                                  proposal.reviewedAt
+                                ).toLocaleDateString()}
                               </span>
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </div>
                       </div>
+
+                      {/* Checkbox for selection */}
+                      <input
+                        type="checkbox"
+                        checked={selectedProposals.includes(proposal.id)}
+                        onChange={() => handleProposalSelect(proposal.id)}
+                        className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
                     </div>
 
-                    {/* Message preview */}
-                    <div className="mt-4">
-                      <p className="text-sm text-gray-600 line-clamp-2">
-                        {proposal.message}
-                      </p>
-                    </div>
+                    {/* Proposal message preview */}
+                    <p className="text-gray-700 line-clamp-2 mb-4">
+                      {proposal.message
+                        ?.replace(/<[^>]*>/g, "")
+                        .substring(0, 200)}
+                      ...
+                    </p>
 
-                    {/* Timestamp */}
-                    <div className="mt-4 flex items-center text-sm text-gray-500">
-                      <Clock className="h-4 w-4 mr-1" />
-                      Submitted{" "}
-                      {formatDistanceToNow(new Date(proposal.submittedAt), {
-                        addSuffix: true,
-                      })}
+                    {/* Financial info */}
+                    <div className="flex flex-wrap gap-6">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-gray-400" />
+                        <span className="font-semibold text-gray-900">
+                          ${proposal.price.toLocaleString()}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          {proposal.brief?.quantity &&
+                            `(${(
+                              proposal.price / proposal.brief.quantity
+                            ).toFixed(2)}/unit)`}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-gray-400" />
+                        <span className="text-gray-700">
+                          {proposal.timelineDays} days
+                        </span>
+                      </div>
+
+                      {proposal.brief?.budget && (
+                        <div
+                          className={`text-sm ${
+                            proposal.price <= proposal.brief.budget
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {proposal.price <= proposal.brief.budget
+                            ? "Within"
+                            : "Over"}{" "}
+                          budget
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  {/* Right side - Actions (mobile/tablet) */}
-                  <div className="lg:hidden">
-                    <div className="flex flex-col gap-2">
-                      <Link
-                        href={`/brand/proposals/${proposal.id}`}
-                        className="px-4 py-2 bg-gray-100 text-gray-800 text-sm font-medium rounded-md hover:bg-gray-200 text-center"
-                      >
-                        View Details
-                      </Link>
-                      <div className="grid grid-cols-3 gap-2">
-                        <button
-                          onClick={() =>
-                            handleProposalAction(proposal.id, "accept")
-                          }
-                          disabled={
-                            proposal.status !== "SUBMITTED" &&
-                            proposal.status !== "COUNTERED"
-                          }
-                          className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200 disabled:opacity-50"
-                        >
-                          Accept
-                        </button>
-                        <button
-                          onClick={() =>
-                            handleProposalAction(proposal.id, "counter")
-                          }
-                          disabled={proposal.status !== "SUBMITTED"}
-                          className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded hover:bg-yellow-200 disabled:opacity-50"
-                        >
-                          Counter
-                        </button>
-                        <button
-                          onClick={() =>
-                            handleProposalAction(proposal.id, "reject")
-                          }
-                          disabled={
-                            proposal.status === "ACCEPTED" ||
-                            proposal.status === "REJECTED"
-                          }
-                          className="px-2 py-1 text-xs bg-red-100 text-red-800 rounded hover:bg-red-200 disabled:opacity-50"
-                        >
-                          Reject
-                        </button>
-                      </div>
-                      <Link
-                        href={`/brand/chat/${proposal.manufacturer.id}`}
-                        className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 text-center flex items-center justify-center gap-2"
+                  {/* Right side - Actions */}
+                  <div className="flex flex-col sm:flex-row lg:flex-col gap-3">
+                    <button
+                      onClick={() =>
+                        router.push(
+                          userType === "BRAND"
+                            ? `/brand/proposals/${proposal.id}`
+                            : `/manufacturer/proposals/${proposal.id}`
+                        )
+                      }
+                      className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <Eye className="h-4 w-4" />
+                      View Details
+                    </button>
+
+                    {proposal.conversationId ? (
+                      <button
+                        onClick={() =>
+                          router.push(`/chat/${proposal.conversationId}`)
+                        }
+                        className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                       >
                         <MessageSquare className="h-4 w-4" />
-                        Message
-                      </Link>
+                        Open Chat
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() =>
+                          router.push(
+                            `/chat?userId=${
+                              userType === "BRAND"
+                                ? proposal.manufacturerId
+                                : proposal.brandId
+                            }&proposalId=${proposal.id}`
+                          )
+                        }
+                        className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        Start Chat
+                      </button>
+                    )}
+
+                    {/* Quick actions dropdown */}
+                    <div className="relative">
+                      <button className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                        <MoreVertical className="h-4 w-4" />
+                        More
+                      </button>
+
+                      <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-10 hidden group-hover:block">
+                        <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                          Download PDF
+                        </button>
+                        <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                          Duplicate Proposal
+                        </button>
+                        <button className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                          Withdraw Proposal
+                        </button>
+                      </div>
                     </div>
                   </div>
-
-                  {/* Right side - Actions (desktop) */}
-                  <div className="hidden lg:flex flex-col items-end gap-3">
-                    <Link
-                      href={`/brand/proposals/${proposal.id}`}
-                      className="inline-flex items-center text-sm text-green-600 hover:text-green-800"
-                    >
-                      View Full Details
-                      <ChevronRight className="h-4 w-4 ml-1" />
-                    </Link>
-                    <Link
-                      href={`/brand/chat/${proposal.manufacturer.id}`}
-                      className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 flex items-center gap-2"
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                      Start Chat
-                    </Link>
-                  </div>
                 </div>
+
+                {/* Negotiation info */}
+                {proposal.counterProposal && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <MessageSquare className="h-4 w-4" />
+                      <span>Counter offer available</span>
+                      <span className="font-medium">
+                        ${proposal.counterProposal.price.toLocaleString()} for{" "}
+                        {proposal.counterProposal.timelineDays} days
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
-            );
-          })}
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Pagination */}
+      {pagination.pages > 1 && (
+        <div className="flex items-center justify-between bg-white rounded-xl border shadow-sm p-6">
+          <div className="text-sm text-gray-600">
+            Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
+            {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
+            {pagination.total} proposals
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => router.push(`?page=${pagination.page - 1}`)}
+              disabled={pagination.page === 1}
+              className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              Previous
+            </button>
+
+            {Array.from({ length: Math.min(5, pagination.pages) }, (_, i) => {
+              let pageNum;
+              if (pagination.pages <= 5) {
+                pageNum = i + 1;
+              } else if (pagination.page <= 3) {
+                pageNum = i + 1;
+              } else if (pagination.page >= pagination.pages - 2) {
+                pageNum = pagination.pages - 4 + i;
+              } else {
+                pageNum = pagination.page - 2 + i;
+              }
+
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => router.push(`?page=${pageNum}`)}
+                  className={`px-4 py-2 border rounded-lg ${
+                    pageNum === pagination.page
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+
+            <button
+              onClick={() => router.push(`?page=${pagination.page + 1}`)}
+              disabled={pagination.page === pagination.pages}
+              className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>

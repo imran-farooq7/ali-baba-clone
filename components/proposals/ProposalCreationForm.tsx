@@ -16,13 +16,7 @@ import {
   Briefcase,
   BarChart,
 } from "lucide-react";
-import dynamic from "next/dynamic";
-
-// Dynamically import rich text editor to avoid SSR issues
-const RichTextEditor = dynamic(() => import("@/components/ui/RichTextEditor"), {
-  ssr: false,
-  loading: () => <div className="h-32 bg-gray-100 animate-pulse rounded"></div>,
-});
+import { Editor } from "@tinymce/tinymce-react";
 
 interface ProposalCreationFormProps {
   manufacturerId: string;
@@ -292,10 +286,22 @@ export default function ProposalCreationForm({
               Introduce your company, explain why you're the best fit, and
               detail your approach
             </p>
-            <RichTextEditor
+            <Editor
+              apiKey={process.env.NEXT_PUBLIC_TINYMCE_API_KEY} // Use your env variable
               value={formData.message}
-              onChange={(value) => setFormData({ ...formData, message: value })}
-              placeholder="Describe your manufacturing capabilities, quality standards, and why you're the right choice for this project..."
+              onEditorChange={(content) =>
+                setFormData({ ...formData, message: content })
+              }
+              init={{
+                height: 300,
+                menubar: false,
+                plugins:
+                  "advlist autolink lists link image charmap preview anchor searchreplace visualblocks code fullscreen insertdatetime media table code help wordcount",
+                toolbar:
+                  "undo redo | formatselect | bold italic backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help",
+                content_style:
+                  "body { font-family:Helvetica,Arial,sans-serif; font-size:14px; }",
+              }}
             />
           </div>
         </div>
