@@ -1,7 +1,7 @@
 // components/manufacturer/ManufacturerBriefList.tsx
 "use client";
 
-import { BriefStatus } from "@/app/generated/prisma/enums";
+import { BriefStatus } from "@/lib/generated/prisma/enums";
 import { formatDistanceToNow } from "date-fns";
 import {
   CheckCircle,
