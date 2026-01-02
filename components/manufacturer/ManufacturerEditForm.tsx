@@ -98,7 +98,9 @@ export default function ManufacturerEditForm({
   const removeCapability = (index: number) => {
     setFormData({
       ...formData,
-      capabilities: formData.capabilities.filter((_, i: number) => i !== index),
+      capabilities: formData.capabilities.filter(
+        (_: any, i: number) => i !== index
+      ),
     });
   };
 
@@ -118,7 +120,9 @@ export default function ManufacturerEditForm({
   const removeCertification = (index: number) => {
     setFormData({
       ...formData,
-      certifications: formData.certifications.filter((_, i) => i !== index),
+      certifications: formData.certifications.filter(
+        (_: any, i: number) => i !== index
+      ),
     });
   };
 
@@ -138,7 +142,7 @@ export default function ManufacturerEditForm({
   const removeLocation = (index: number) => {
     setFormData({
       ...formData,
-      locations: formData.locations.filter((_, i: number) => i !== index),
+      locations: formData.locations.filter((_: any, i: number) => i !== index),
     });
   };
 
@@ -158,7 +162,9 @@ export default function ManufacturerEditForm({
   const removeIndustry = (index: number) => {
     setFormData({
       ...formData,
-      industries: formData.industries.filter((_, i: number) => i !== index),
+      industries: formData.industries.filter(
+        (_: any, i: number) => i !== index
+      ),
     });
   };
 

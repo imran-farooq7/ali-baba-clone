@@ -22,158 +22,160 @@ export interface Message {
   };
 }
 
-// Factory function for messages hook
+// Create supabase client once
+const supabase = createClient();
+
+// Simplified hook
 export const useMessages = (
-  supabaseClient: ReturnType<typeof createClient>
+  conversationId?: string,
+  currentUserId?: string
 ) => {
-  return (conversationId?: string, currentUserId?: string) => {
-    const [messages, setMessages] = useState<Message[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
-    const [isSending, setIsSending] = useState(false);
-    const [hasMore, setHasMore] = useState(true);
-    const [cursor, setCursor] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [cursor, setCursor] = useState<string | null>(null);
 
-    // Fetch messages
-    const fetchMessages = useCallback(
-      async (loadMore = false) => {
-        if (!conversationId || !currentUserId) return;
+  // Fetch messages
+  const fetchMessages = useCallback(
+    async (loadMore = false) => {
+      if (!conversationId || !currentUserId) return;
 
-        setIsLoading(true);
-        try {
-          const url = new URL(
-            `/api/chat/${conversationId}`,
-            window.location.origin
-          );
-          if (loadMore && cursor) {
-            url.searchParams.set("cursor", cursor);
-          }
-
-          const response = await fetch(url.toString());
-          if (!response.ok) throw new Error("Failed to fetch messages");
-
-          const data = await response.json();
-
-          if (loadMore) {
-            setMessages((prev) => [...prev, ...data.messages]);
-          } else {
-            setMessages(data.messages);
-          }
-
-          setHasMore(data.nextCursor !== null);
-          setCursor(data.nextCursor);
-        } catch (err) {
-          console.error("Error fetching messages:", err);
-        } finally {
-          setIsLoading(false);
-        }
-      },
-      [conversationId, currentUserId, cursor]
-    );
-
-    // Send message
-    const sendMessage = useCallback(
-      async (content?: string, file?: File): Promise<Message> => {
-        if (!conversationId) {
-          throw new Error("No active conversation");
+      setIsLoading(true);
+      try {
+        const url = new URL(
+          `/api/chat/${conversationId}`,
+          window.location.origin
+        );
+        if (loadMore && cursor) {
+          url.searchParams.set("cursor", cursor);
         }
 
-        const validation = validateMessageInput(content, file);
-        if (!validation.valid) {
-          throw new Error(validation.error);
+        const response = await fetch(url.toString());
+        if (!response.ok) throw new Error("Failed to fetch messages");
+
+        const data = await response.json();
+
+        if (loadMore) {
+          setMessages((prev) => [...prev, ...data.messages]);
+        } else {
+          setMessages(data.messages);
         }
 
-        setIsSending(true);
-        try {
-          let fileData = null;
+        setHasMore(data.nextCursor !== null);
+        setCursor(data.nextCursor);
+      } catch (err) {
+        console.error("Error fetching messages:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [conversationId, currentUserId, cursor]
+  );
 
-          if (file) {
-            const formData = new FormData();
-            formData.append("file", file);
-            formData.append("conversationId", conversationId);
+  // Send message
+  const sendMessage = useCallback(
+    async (content?: string, file?: File): Promise<Message> => {
+      if (!conversationId) {
+        throw new Error("No active conversation");
+      }
 
-            const uploadResponse = await fetch("/api/chat/upload", {
-              method: "POST",
-              body: formData,
-            });
+      const validation = validateMessageInput(content, file);
+      if (!validation.valid) {
+        throw new Error(validation.error);
+      }
 
-            if (!uploadResponse.ok) {
-              const error = await uploadResponse.json();
-              throw new Error(error.error || "Failed to upload file");
-            }
+      setIsSending(true);
+      try {
+        let fileData = null;
 
-            fileData = await uploadResponse.json();
-          }
+        if (file) {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("conversationId", conversationId);
 
-          const response = await fetch(`/api/chat/${conversationId}`, {
+          const uploadResponse = await fetch("/api/chat/upload", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              content: content?.trim(),
-              fileUrl: fileData?.url,
-              fileName: fileData?.fileName,
-              fileSize: fileData?.fileSize,
-              fileType: fileData?.fileType,
-            }),
+            body: formData,
           });
 
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || "Failed to send message");
+          if (!uploadResponse.ok) {
+            const error = await uploadResponse.json();
+            throw new Error(error.error || "Failed to upload file");
           }
 
-          const newMessage = await response.json();
-          setMessages((prev) => [...prev, newMessage]);
-          return newMessage;
-        } catch (err) {
-          console.error("Error sending message:", err);
-          throw err;
-        } finally {
-          setIsSending(false);
+          fileData = await uploadResponse.json();
         }
-      },
-      [conversationId]
-    );
 
-    // Setup realtime subscription
-    useEffect(() => {
-      if (!conversationId || !supabaseClient) return;
+        const response = await fetch(`/api/chat/${conversationId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: content?.trim(),
+            fileUrl: fileData?.url,
+            fileName: fileData?.fileName,
+            fileSize: fileData?.fileSize,
+            fileType: fileData?.fileType,
+          }),
+        });
 
-      const channel = supabaseClient
-        .channel(`chat:${conversationId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "messages",
-            filter: `conversationId=eq.${conversationId}`,
-          },
-          (payload) => {
-            const newMessage = payload.new as Message;
-            setMessages((prev) => [...prev, newMessage]);
-          }
-        )
-        .subscribe();
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to send message");
+        }
 
-      return () => {
-        supabaseClient.removeChannel(channel);
-      };
-    }, [conversationId, supabaseClient]);
-
-    // Load initial messages
-    useEffect(() => {
-      if (conversationId && currentUserId) {
-        fetchMessages(false);
+        const newMessage = await response.json();
+        setMessages((prev) => [...prev, newMessage]);
+        return newMessage;
+      } catch (err) {
+        console.error("Error sending message:", err);
+        throw err;
+      } finally {
+        setIsSending(false);
       }
-    }, [conversationId, currentUserId, fetchMessages]);
+    },
+    [conversationId]
+  );
 
-    return {
-      messages,
-      isLoading,
-      isSending,
-      hasMore,
-      fetchMessages: () => fetchMessages(true),
-      sendMessage,
+  // Setup realtime subscription
+  useEffect(() => {
+    if (!conversationId || !supabase) return;
+
+    const channel = supabase
+      .channel(`chat:${conversationId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `conversationId=eq.${conversationId}`,
+        },
+        (payload) => {
+          const newMessage = payload.new as Message;
+          setMessages((prev) => [...prev, newMessage]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
     };
+  }, [conversationId]);
+
+  // Load initial messages
+  useEffect(() => {
+    if (conversationId && currentUserId) {
+      fetchMessages(false);
+    }
+  }, [conversationId, currentUserId, fetchMessages]);
+
+  return {
+    messages,
+    isLoading,
+    isSending,
+    hasMore,
+    fetchMessages: () => fetchMessages(true),
+    sendMessage,
   };
 };

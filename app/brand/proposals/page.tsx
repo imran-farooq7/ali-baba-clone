@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import StatusFilter from "@/components/brand/status-filter";
 
 interface BrandProposalsPageProps {
   searchParams: Promise<{
@@ -30,7 +32,13 @@ export default async function BrandProposalsPage({
   if (!user || user.type !== "BRAND") {
     redirect("/auth/login");
   }
+  const cookieStore = await cookies();
+  const allCookies = cookieStore.getAll();
 
+  // Build cookie string
+  const cookieString = allCookies
+    .map((cookie) => `${cookie.name}=${cookie.value}`)
+    .join("; ");
   // Fetch proposals with filters
   const queryParams = new URLSearchParams();
   if (params.status) queryParams.set("status", params.status);
@@ -44,10 +52,11 @@ export default async function BrandProposalsPage({
       cache: "no-store",
       headers: {
         "Content-Type": "application/json",
-        Cookie: `sb-access-token=${user.id}`, // You'll need to pass auth token
+        Cookie: cookieString, // You'll need to pass auth token
       },
     }
   );
+  console.log(response);
 
   if (!response.ok) {
     throw new Error("Failed to fetch proposals");
@@ -173,26 +182,7 @@ export default async function BrandProposalsPage({
               )}
 
               {/* Status Filter */}
-              <select
-                defaultValue={params.status || "all"}
-                onChange={(e) => {
-                  const url = new URL(window.location.href);
-                  if (e.target.value !== "all") {
-                    url.searchParams.set("status", e.target.value);
-                  } else {
-                    url.searchParams.delete("status");
-                  }
-                  window.location.href = url.toString();
-                }}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="all">All Status</option>
-                <option value="SUBMITTED">Submitted</option>
-                <option value="UNDER_REVIEW">Under Review</option>
-                <option value="NEGOTIATION">Negotiation</option>
-                <option value="ACCEPTED">Accepted</option>
-                <option value="REJECTED">Rejected</option>
-              </select>
+              <StatusFilter status={params.status!} />
 
               {/* Time Filter */}
               <select className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">

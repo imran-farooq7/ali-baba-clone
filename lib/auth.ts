@@ -8,7 +8,6 @@ import { createClient } from "./supabase/server";
 // lib/auth.ts - UPDATE THIS PART
 export const getCurrentUser = async () => {
   try {
-    const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
 
     const {
