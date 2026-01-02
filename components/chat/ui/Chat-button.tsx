@@ -51,7 +51,8 @@ export default function ChatButton({
       if (response.ok) {
         const conversation = await response.json();
         // Navigate to the chat
-        router.push(`/chat/${conversation.id}`);
+        console.log(conversation, "res from api conversation");
+        router.push(`/chat?conversationId=${conversation.id}`);
       } else {
         console.error("Failed to create conversation");
       }

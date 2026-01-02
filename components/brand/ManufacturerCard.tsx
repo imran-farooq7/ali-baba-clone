@@ -173,7 +173,7 @@ export default function ManufacturerCard({
           {/* Action Buttons */}
           <div className="flex items-center gap-3 mt-4 pt-4 border-t">
             <Link
-              href={`/manufacturers/profile`}
+              href={`/brand/manufacturers/${manufacturer.id}`}
               className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
             >
               View Profile

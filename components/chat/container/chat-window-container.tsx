@@ -1,9 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import ChatHeader from "@/components/chat/ui/chat-header";
-import MessageList from "@/components/chat/ui/message-list";
-import MessageInput from "@/components/chat/ui/message-input";
 import {
   ArrowLeft,
   MoreVertical,
@@ -17,6 +14,9 @@ import {
   Loader2,
 } from "lucide-react";
 import { supabaseRealtime, uploadChatFile } from "@/lib/supabase/realtime";
+import { ChatHeader } from "../ui/chat-header";
+import { MessageList } from "../ui/message-list";
+import { MessageInput } from "../ui/message-input";
 
 interface ChatWindowContainerProps {
   conversation: any;
@@ -232,9 +232,9 @@ export default function ChatWindowContainer({
       {/* Header */}
       <ChatHeader
         conversation={conversation}
-        onBack={onBack}
-        typingUsers={typingUsers}
-        onlineUsers={[]} // You would pass actual online users
+        // onBack={onBack}
+        // typingUsers={typingUsers}
+        // onlineUsers={[]} // You would pass actual online users
       />
 
       {/* Messages */}
@@ -352,7 +352,7 @@ export default function ChatWindowContainer({
         </div>
 
         <MessageInput
-          onSend={handleSendMessage}
+          onSendMessage={handleSendMessage}
           onTyping={handleTyping}
           disabled={sending || uploadingFile}
           placeholder="Type your message..."

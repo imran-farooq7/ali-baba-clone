@@ -1,6 +1,6 @@
 // components/chat/ui/message-list.tsx
 import { FC, useEffect, useRef } from "react";
-import { MessageItem } from "./message-item";
+import MessageItem from "./message-item";
 
 interface MessageListProps {
   messages: Array<{
@@ -67,7 +67,9 @@ export const MessageList = ({
           <MessageItem
             key={message.id}
             message={message}
-            isOwnMessage={message.senderId === currentUserId}
+            showAvatar
+            showName
+            isOwn={message.senderId === currentUserId}
           />
         ))}
         <div ref={messagesEndRef} />
