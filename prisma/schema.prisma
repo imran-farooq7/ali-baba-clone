@@ -93,8 +93,11 @@ model User {
   sentMessages Message[]     @relation("SentMessages") // Messages they sent
 
   // AI Assistant Logs
-  aiAssistantLogs AiAssistantLog[]
-  bookmarks       Bookmark[]
+  aiAssistantLogs          AiAssistantLog[]
+  bookmarks                Bookmark[]
+  notifications            Notification[]            @relation("SentNotifications")
+  userNotifications        Notification[]            @relation("UserNotifications")
+  userNotificationSettings UserNotificationSettings?
 
   // Indexes
   @@index([type])
@@ -138,6 +141,7 @@ model Brief {
   conversationId        String?          @unique
   bookmarks             Bookmark[]
   aiAssistantLogs       AiAssistantLog[]
+  notifications         Notification[]
 
   @@index([brandId])
   @@index([category])
@@ -178,6 +182,7 @@ model Proposal {
   conversation      Conversation?    @relation(fields: [conversationId], references: [id])
   conversationId    String?          @unique
   aiAssistantLogs   AiAssistantLog[]
+  notifications     Notification[]
 
   @@index([briefId])
   @@index([manufacturerId])
@@ -189,19 +194,20 @@ model Proposal {
 
 // ===================== CHAT SYSTEM MODELS =====================
 model Conversation {
-  id            String        @id @default(cuid())
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id            String         @id @default(cuid())
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   title         String?
   // Optional links to business entities
-  briefId       String?       @unique
+  briefId       String?        @unique
   brief         Brief?
-  proposalId    String?       @unique
+  proposalId    String?        @unique
   proposal      Proposal?
   // Core chat relations
   participants  Participant[]
   messages      Message[]
   lastMessageAt DateTime?
+  notifications Notification[]
 
   @@index([lastMessageAt])
 }
@@ -281,6 +287,108 @@ model AiAssistantLog {
   @@index([briefId])
   @@index([proposalId])
   @@map("ai_assistant_logs")
+}
+
+// ===================== NOTIFICATION MODELS =====================
+enum NotificationType {
+  PROPOSAL_RECEIVED
+  PROPOSAL_ACCEPTED
+  PROPOSAL_REJECTED
+  PROPOSAL_COUNTERED
+  BRIEF_PUBLISHED
+  BRIEF_MATCHED
+  NEW_MESSAGE
+  MENTION
+  SYSTEM_ALERT
+  PAYMENT_RECEIVED
+  PROJECT_UPDATE
+  VERIFICATION_APPROVED
+  VERIFICATION_REJECTED
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model Notification {
+  id       String               @id @default(cuid())
+  type     NotificationType
+  title    String
+  message  String
+  metadata Json? // Additional data like entity IDs
+  priority NotificationPriority @default(MEDIUM)
+
+  // Relations
+  recipientId String
+  recipient   User    @relation("UserNotifications", fields: [recipientId], references: [id], onDelete: Cascade)
+  senderId    String? // Who triggered the notification
+  sender      User?   @relation("SentNotifications", fields: [senderId], references: [id])
+
+  // Entity references (optional)
+  briefId        String?
+  brief          Brief?        @relation(fields: [briefId], references: [id])
+  proposalId     String?
+  proposal       Proposal?     @relation(fields: [proposalId], references: [id])
+  conversationId String?
+  conversation   Conversation? @relation(fields: [conversationId], references: [id])
+
+  // Status
+  isRead     Boolean   @default(false)
+  isArchived Boolean   @default(false)
+  readAt     DateTime?
+  archivedAt DateTime?
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  expiresAt DateTime? // For time-sensitive notifications
+
+  // Indexes
+  @@index([recipientId, createdAt])
+  @@index([recipientId, isRead])
+  @@index([recipientId, isArchived])
+  @@index([createdAt])
+  @@index([type])
+  @@map("notifications")
+}
+
+model UserNotificationSettings {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Email preferences
+  emailProposals Boolean @default(true)
+  emailMessages  Boolean @default(true)
+  emailSystem    Boolean @default(true)
+  emailMarketing Boolean @default(false)
+
+  // Push preferences
+  pushProposals Boolean @default(true)
+  pushMessages  Boolean @default(true)
+  pushSystem    Boolean @default(true)
+
+  // In-app preferences
+  inAppProposals Boolean @default(true)
+  inAppMessages  Boolean @default(true)
+  inAppSystem    Boolean @default(true)
+
+  // Quiet hours
+  quietHoursStart   Int?    @default(22) // 10 PM
+  quietHoursEnd     Int?    @default(8) // 8 AM
+  quietHoursEnabled Boolean @default(false)
+
+  // Digest preferences
+  dailyDigest  Boolean @default(true)
+  weeklyDigest Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user_notification_settings")
 }
 
 // ===================== RELATIONSHIP NOTES =====================
