@@ -30,8 +30,8 @@ interface UserNotificationSettings {
   emailMessages: boolean;
   emailSystem: boolean;
   quietHoursEnabled: boolean;
-  quietHoursStart?: number;
-  quietHoursEnd?: number;
+  quietHoursStart?: number | null;
+  quietHoursEnd?: number | null;
 }
 
 interface Notification {
@@ -43,12 +43,12 @@ interface Notification {
   isRead: boolean;
   createdAt: Date;
   metadata: any;
-  sender?: {
+  sender: {
     id: string;
     name: string;
-    avatar: string;
-    company: string;
-  };
+    avatar: string | null;
+    company: string | null;
+  } | null;
 }
 
 // ===================== UTILITY FUNCTIONS =====================
