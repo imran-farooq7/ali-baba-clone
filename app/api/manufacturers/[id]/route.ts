@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/prisma/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/prisma/prisma";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   request: NextRequest,
@@ -8,13 +8,17 @@ export async function GET(
 ) {
   try {
     const { id } = await context.params;
-    const currentUser = await getCurrentUser();
 
-    if (!currentUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Get current user - optional since viewing is public
+    let currentUser;
+    try {
+      currentUser = await getCurrentUser();
+    } catch {
+      currentUser = null;
     }
 
     // Fetch manufacturer with all details
+    // Note: Public info, no auth required for viewing
     const manufacturer = await prisma.user.findUnique({
       where: {
         id,
@@ -58,7 +62,7 @@ export async function GET(
           select: {
             sentProposals: true,
             receivedBriefs: true,
-            bookmarkedBy: true,
+            bookmarks: true,
           },
         },
       },
@@ -72,7 +76,7 @@ export async function GET(
     }
 
     // Calculate stats
-    const totalProposals = manufacturer.sentProposals.length;
+    const totalProposals = manufacturer._count.sentProposals;
     const acceptedProposals = manufacturer.sentProposals.filter(
       (p) => p.status === "ACCEPTED"
     ).length;
@@ -109,13 +113,16 @@ export async function GET(
         acceptedProposals,
         acceptanceRate,
         totalBriefs: manufacturer._count.receivedBriefs,
-        bookmarks: manufacturer._count.bookmarkedBy,
+        bookmarks: manufacturer._count.bookmarks,
         memberSince: new Date(manufacturer.createdAt).getFullYear(),
       },
     };
 
     // If manufacturer viewing own profile, include private data
-    if (currentUser.id === manufacturer.id || currentUser.type === "ADMIN") {
+    if (
+      currentUser &&
+      (currentUser.id === manufacturer.id || currentUser.type === "ADMIN")
+    ) {
       return NextResponse.json({
         ...baseData,
         privateStats: {
@@ -133,7 +140,7 @@ export async function GET(
     }
 
     // If brand viewing manufacturer
-    if (currentUser.type === "BRAND") {
+    if (currentUser?.type === "BRAND") {
       // Check if manufacturer is bookmarked by this brand
       const bookmark = await prisma.bookmark.findUnique({
         where: {

@@ -82,7 +82,7 @@ export default async function ManufacturerDetailPage({
       _count: {
         select: {
           sentProposals: true,
-          bookmarkedBy: true,
+          bookmarks: true,
         },
       },
     },
@@ -231,7 +231,7 @@ export default async function ManufacturerDetailPage({
                         <div className="flex items-center gap-2">
                           <Eye className="h-4 w-4" />
                           <span>
-                            {manufacturer._count?.bookmarkedBy || 0} bookmarks
+                            {manufacturer._count?.bookmarks || 0} bookmarks
                           </span>
                         </div>
                       </div>
@@ -240,13 +240,13 @@ export default async function ManufacturerDetailPage({
                     {/* Action Buttons */}
                     <div className="flex flex-col sm:flex-row gap-3">
                       <ChatButton
-                        manufacturerId={manufacturer.id}
-                        participants={[manufacturer.id]}
-                        title={`Chat with ${manufacturer.company}`}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                      // manufacturerId={manufacturer.id}
+                      // participants={[manufacturer.id]}
+                      // title={`Chat with ${manufacturer.company}`}
+                      // className="bg-blue-600 hover:bg-blue-700 text-white"
                       />
 
-                      <form action="/api/manufacturers/bookmark" method="POST">
+                      <form method="POST">
                         <input
                           type="hidden"
                           name="manufacturerId"
@@ -302,7 +302,7 @@ export default async function ManufacturerDetailPage({
 
               <StatsCard
                 title="Bookmarks"
-                value={manufacturer._count?.bookmarkedBy || 0}
+                value={manufacturer._count?.bookmarks || 0}
                 color="purple"
               />
             </div>
@@ -495,10 +495,10 @@ export default async function ManufacturerDetailPage({
 
                 <div className="pt-4 border-t">
                   <ChatButton
-                    manufacturerId={manufacturer.id}
-                    participants={[manufacturer.id]}
-                    title={`Chat with ${manufacturer.company}`}
-                    className="w-full justify-center"
+                  // manufacturerId={manufacturer.id}
+                  // participants={[manufacturer.id]}
+                  // title={`Chat with ${manufacturer.company}`}
+                  // className="w-full justify-center"
                   />
                 </div>
               </div>

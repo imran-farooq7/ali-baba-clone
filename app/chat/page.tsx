@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { supabaseRealtime } from "@/lib/supabase/realtime";
 import ChatWindowContainer from "@/components/chat/container/chat-window-container";
+import { createClient } from "@/lib/supabase/client";
 
 export default function ChatPage() {
   const router = useRouter();
@@ -25,14 +26,23 @@ export default function ChatPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+  const [userId, setUserId] = useState("");
 
   const userChannels = useRef<Map<string, any>>(new Map());
-
+  const getUser = async () => {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    setUserId(user?.id!);
+  };
   // Fetch conversations
   useEffect(() => {
     fetchConversations();
   }, []);
-
+  useEffect(() => {
+    getUser();
+  }, []);
   // Set up real-time subscriptions
   useEffect(() => {
     if (!conversations.length) return;
@@ -353,9 +363,9 @@ export default function ChatPage() {
                       </div>
 
                       <p className="text-sm text-gray-600 truncate">
-                        {conversation.messages[0]?.type === "FILE"
+                        {conversation.Message[0]?.type === "FILE"
                           ? `📎 ${conversation.messages[0]?.fileName}`
-                          : conversation.messages[0]?.content?.replace(
+                          : conversation.Message[0]?.content?.replace(
                               /<[^>]*>/g,
                               ""
                             ) || "No messages yet"}
@@ -406,10 +416,7 @@ export default function ChatPage() {
                 setSelectedConversation(null);
                 router.push("/chat");
               }}
-              onTyping={(isTyping: boolean) =>
-                handleSendTyping(selectedConversation.id, isTyping)
-              }
-              onMessageSent={fetchConversations}
+              currentUserId={userId}
             />
           ) : (
             <div className="h-full flex items-center justify-center">

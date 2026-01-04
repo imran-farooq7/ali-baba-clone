@@ -1,6 +1,7 @@
 // lib/db/chat.operations.ts
 
 import { prisma } from "@/prisma/prisma";
+import { Message } from "../generated/prisma/client";
 
 // Type Definitions
 export interface MessageData {
@@ -39,7 +40,7 @@ export interface ConversationData {
       company?: string | null;
     };
   }>;
-  messages: MessageData[];
+  Message: Message[];
   brief?: { id: string; title: string; status: string } | null;
   proposal?: { id: string; message: string; status: string } | null;
 }
@@ -84,16 +85,17 @@ export const getUserConversations = async (
           },
         },
       },
-      messages: {
+      Message: {
         take: 1,
         orderBy: { createdAt: "desc" },
         include: {
-          sender: {
+          User_Message_senderIdToUser: {
             select: {
               id: true,
               name: true,
               avatar: true,
               type: true,
+              Message_Message_senderIdToUser: true,
             },
           },
         },
@@ -191,7 +193,7 @@ export const getMessages = async (
       isDeleted: false,
     },
     include: {
-      sender: {
+      User_Message_senderIdToUser: {
         select: {
           id: true,
           name: true,
@@ -266,7 +268,7 @@ export const createSendMessage =
           type: fileUrl ? "FILE" : "TEXT",
         },
         include: {
-          sender: {
+          User_Message_senderIdToUser: {
             select: {
               id: true,
               name: true,

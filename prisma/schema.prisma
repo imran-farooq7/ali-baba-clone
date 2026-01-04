@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client"
   output   = "../lib/generated/prisma"
@@ -13,8 +7,296 @@ datasource db {
   provider = "postgresql"
 }
 
-// ===================== ENUMS =====================
-// (Your existing enums remain the same)
+model User {
+  id                             String                    @id @default(cuid())
+  email                          String                    @unique
+  name                           String
+  type                           UserType
+  avatar                         String?
+  company                        String?
+  website                        String?
+  preferredCategories            String[]                  @default([])
+  description                    String?
+  capabilities                   String[]                  @default([])
+  certifications                 String[]                  @default([])
+  minOrderQuantity               Int?
+  maxOrderQuantity               Int?
+  productionCapacity             Int?
+  locations                      String[]                  @default([])
+  industries                     String[]                  @default([])
+  verified                       Boolean                   @default(false)
+  capabilityDetails              Json?
+  certificationDetails           Json?
+  metadata                       Json?
+  createdAt                      DateTime                  @default(now())
+  updatedAt                      DateTime                  @updatedAt
+  Message_Message_senderIdToUser Message[]                 @relation("Message_senderIdToUser")
+  Message_Message_userIdToUser   Message[]                 @relation("Message_userIdToUser")
+  participants                   Participant[]
+  BriefBookmarks                 BriefBookmarks[]
+  aiAssistantLogs                AiAssistantLog[]
+  bookmarks                      Bookmark[]
+  createdBriefs                  Brief[]                   @relation("BrandBriefs")
+  receivedBriefs                 Brief[]                   @relation("ManufacturerBriefs")
+  userNotifications              Notification[]            @relation("UserNotifications")
+  notifications                  Notification[]            @relation("SentNotifications")
+  receivedProposals              Proposal[]                @relation("BrandProposals")
+  sentProposals                  Proposal[]                @relation("ManufacturerProposals")
+  userNotificationSettings       UserNotificationSettings?
+  User_A                         User[]                    @relation("ManufacturerBookmarks")
+  User_B                         User[]                    @relation("ManufacturerBookmarks")
+
+  @@index([type])
+  @@index([email])
+  @@index([verified])
+  @@index([createdAt])
+}
+
+model Brief {
+  id                    String           @id @default(cuid())
+  title                 String
+  description           String
+  aiEnhancedDescription String?
+  category              String
+  quantity              Int
+  budget                Float
+  budgetRangeMin        Float?
+  budgetRangeMax        Float?
+  timelineDays          Int?
+  location              String?
+  requirements          Json?
+  attachments           String[]
+  status                BriefStatus      @default(DRAFT)
+  eligibilityScore      Int?
+  proposalsCount        Int              @default(0)
+  viewsCount            Int              @default(0)
+  aiSuggestions         Json?
+  bestProposalId        String?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  publishedAt           DateTime?
+  expiresAt             DateTime?
+  brandId               String
+  manufacturerId        String?
+  conversationId        String?          @unique
+  BriefBookmarks        BriefBookmarks[]
+  aiAssistantLogs       AiAssistantLog[]
+  bookmarks             Bookmark[]
+  brand                 User             @relation("BrandBriefs", fields: [brandId], references: [id])
+  conversation          Conversation?    @relation(fields: [conversationId], references: [id])
+  manufacturer          User?            @relation("ManufacturerBriefs", fields: [manufacturerId], references: [id])
+  notifications         Notification[]
+  proposals             Proposal[]
+
+  @@index([brandId])
+  @@index([category])
+  @@index([status])
+  @@index([createdAt])
+  @@index([budget])
+  @@map("briefs")
+}
+
+model Proposal {
+  id                String           @id @default(cuid())
+  message           String
+  price             Float
+  currency          String           @default("USD")
+  timelineDays      Int
+  terms             Json?
+  attachments       String[]
+  status            ProposalStatus   @default(DRAFT)
+  submittedAt       DateTime?
+  reviewedAt        DateTime?
+  decidedAt         DateTime?
+  counterPrice      Float?
+  counterTimeline   Int?
+  counterMessage    String?
+  counterTerms      Json?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  briefId           String
+  manufacturerId    String
+  brandId           String
+  counterProposalId String?
+  conversationId    String?          @unique
+  aiAssistantLogs   AiAssistantLog[]
+  notifications     Notification[]
+  brand             User             @relation("BrandProposals", fields: [brandId], references: [id])
+  brief             Brief            @relation(fields: [briefId], references: [id], onDelete: Cascade)
+  conversation      Conversation?    @relation(fields: [conversationId], references: [id])
+  counterProposal   Proposal?        @relation("CounterProposals", fields: [counterProposalId], references: [id])
+  originalProposal  Proposal[]       @relation("CounterProposals")
+  manufacturer      User             @relation("ManufacturerProposals", fields: [manufacturerId], references: [id], onDelete: Cascade)
+
+  @@index([briefId])
+  @@index([manufacturerId])
+  @@index([brandId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("proposals")
+}
+
+model Conversation {
+  id            String         @id @default(cuid())
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  title         String?
+  briefId       String?        @unique
+  proposalId    String?        @unique
+  lastMessageAt DateTime?
+  Message       Message[]
+  participants  Participant[]
+  brief         Brief?
+  notifications Notification[]
+  proposal      Proposal?
+
+  @@index([lastMessageAt])
+}
+
+model Participant {
+  id             String       @id @default(cuid())
+  userId         String
+  userRole       UserType
+  conversationId String
+  lastReadAt     DateTime     @default(now())
+  lastTypingAt   DateTime?
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, conversationId])
+  @@index([conversationId, lastReadAt])
+  @@index([conversationId, lastTypingAt])
+}
+
+model Bookmark {
+  id             String   @id @default(cuid())
+  userId         String
+  manufacturerId String?
+  briefId        String?
+  createdAt      DateTime @default(now())
+  brief          Brief?   @relation(fields: [briefId], references: [id])
+  manufacturer   User?    @relation(fields: [manufacturerId], references: [id])
+
+  @@unique([userId, manufacturerId])
+  @@unique([userId, briefId])
+  @@map("bookmarks")
+}
+
+model AiAssistantLog {
+  id         String    @id @default(cuid())
+  prompt     String
+  response   String
+  metadata   Json
+  model      String    @default("gemini-2.0-flash")
+  userId     String
+  briefId    String?
+  proposalId String?
+  createdAt  DateTime  @default(now())
+  brief      Brief?    @relation(fields: [briefId], references: [id])
+  proposal   Proposal? @relation(fields: [proposalId], references: [id])
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([briefId])
+  @@index([proposalId])
+  @@map("ai_assistant_logs")
+}
+
+model Notification {
+  id             String               @id @default(cuid())
+  type           NotificationType
+  title          String
+  message        String
+  metadata       Json?
+  priority       NotificationPriority @default(MEDIUM)
+  recipientId    String
+  senderId       String?
+  briefId        String?
+  proposalId     String?
+  conversationId String?
+  isRead         Boolean              @default(false)
+  isArchived     Boolean              @default(false)
+  readAt         DateTime?
+  archivedAt     DateTime?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  expiresAt      DateTime?
+  brief          Brief?               @relation(fields: [briefId], references: [id])
+  conversation   Conversation?        @relation(fields: [conversationId], references: [id])
+  proposal       Proposal?            @relation(fields: [proposalId], references: [id])
+  recipient      User                 @relation("UserNotifications", fields: [recipientId], references: [id], onDelete: Cascade)
+  sender         User?                @relation("SentNotifications", fields: [senderId], references: [id])
+
+  @@index([recipientId, createdAt])
+  @@index([recipientId, isRead])
+  @@index([recipientId, isArchived])
+  @@index([createdAt])
+  @@index([type])
+  @@map("notifications")
+}
+
+model UserNotificationSettings {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  emailProposals    Boolean  @default(true)
+  emailMessages     Boolean  @default(true)
+  emailSystem       Boolean  @default(true)
+  emailMarketing    Boolean  @default(false)
+  pushProposals     Boolean  @default(true)
+  pushMessages      Boolean  @default(true)
+  pushSystem        Boolean  @default(true)
+  inAppProposals    Boolean  @default(true)
+  inAppMessages     Boolean  @default(true)
+  inAppSystem       Boolean  @default(true)
+  quietHoursStart   Int?     @default(22)
+  quietHoursEnd     Int?     @default(8)
+  quietHoursEnabled Boolean  @default(false)
+  dailyDigest       Boolean  @default(true)
+  weeklyDigest      Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_notification_settings")
+}
+
+model Message {
+  id                          String       @id @default(cuid())
+  content                     String?
+  type                        MessageType  @default(TEXT)
+  fileUrl                     String?
+  fileName                    String?
+  fileSize                    Int?
+  fileType                    String?
+  isEdited                    Boolean      @default(false)
+  isDeleted                   Boolean      @default(false)
+  senderId                    String
+  conversationId              String
+  createdAt                   DateTime     @default(now())
+  updatedAt                   DateTime     @default(now())
+  userId                      String?
+  Conversation                Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  User_Message_senderIdToUser User         @relation("Message_senderIdToUser", fields: [senderId], references: [id], onDelete: Cascade)
+  User_Message_userIdToUser   User?        @relation("Message_userIdToUser", fields: [userId], references: [id])
+
+  @@index([conversationId, createdAt])
+  @@index([conversationId, isDeleted])
+  @@index([createdAt])
+  @@index([senderId])
+}
+
+model BriefBookmarks {
+  A      String
+  B      String
+  briefs Brief  @relation(fields: [A], references: [id], onDelete: Cascade)
+  User   User   @relation(fields: [B], references: [id], onDelete: Cascade)
+
+  @@id([A, B], map: "_BriefBookmarks_AB_pkey")
+  @@index([B], map: "_BriefBookmarks_B_index")
+  @@map("_BriefBookmarks")
+}
+
 enum UserType {
   BRAND
   MANUFACTURER
@@ -49,247 +331,6 @@ enum MessageType {
   PROPOSAL_UPDATE
 }
 
-// ===================== MODELS =====================
-model User {
-  id                   String   @id @default(cuid())
-  email                String   @unique
-  name                 String
-  type                 UserType
-  avatar               String?
-  company              String?
-  website              String?
-  preferredCategories  String[] @default([])
-  description          String?
-  capabilities         String[] @default([])
-  certifications       String[] @default([])
-  minOrderQuantity     Int?
-  maxOrderQuantity     Int?
-  productionCapacity   Int?
-  locations            String[] @default([])
-  industries           String[] @default([])
-  verified             Boolean  @default(false)
-  capabilityDetails    Json?
-  certificationDetails Json?
-  metadata             Json?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-
-  // ================== RELATIONS ==================
-  // As Brand
-  createdBriefs     Brief[]    @relation("BrandBriefs")
-  receivedProposals Proposal[] @relation("BrandProposals")
-
-  // As Manufacturer
-  receivedBriefs Brief[]    @relation("ManufacturerBriefs")
-  sentProposals  Proposal[] @relation("ManufacturerProposals")
-
-  // Bookmarks
-  bookmarkedManufacturers User[]  @relation("ManufacturerBookmarks")
-  bookmarkedBy            User[]  @relation("ManufacturerBookmarks")
-  bookmarkedBriefs        Brief[] @relation("BriefBookmarks")
-
-  // Chats (Updated)
-  participants Participant[] // User is part of conversations
-  sentMessages Message[]     @relation("SentMessages") // Messages they sent
-
-  // AI Assistant Logs
-  aiAssistantLogs          AiAssistantLog[]
-  bookmarks                Bookmark[]
-  notifications            Notification[]            @relation("SentNotifications")
-  userNotifications        Notification[]            @relation("UserNotifications")
-  userNotificationSettings UserNotificationSettings?
-
-  // Indexes
-  @@index([type])
-  @@index([email])
-  @@index([verified])
-  @@index([createdAt])
-}
-
-model Brief {
-  id                    String           @id @default(cuid())
-  title                 String
-  description           String
-  aiEnhancedDescription String?
-  category              String
-  quantity              Int
-  budget                Float
-  budgetRangeMin        Float?
-  budgetRangeMax        Float?
-  timelineDays          Int?
-  location              String?
-  requirements          Json?
-  attachments           String[]
-  status                BriefStatus      @default(DRAFT)
-  eligibilityScore      Int?
-  proposalsCount        Int              @default(0)
-  viewsCount            Int              @default(0)
-  aiSuggestions         Json?
-  bestProposalId        String?
-  createdAt             DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
-  publishedAt           DateTime?
-  expiresAt             DateTime?
-  brandId               String
-  brand                 User             @relation("BrandBriefs", fields: [brandId], references: [id])
-  manufacturerId        String?
-  manufacturer          User?            @relation("ManufacturerBriefs", fields: [manufacturerId], references: [id])
-  proposals             Proposal[]
-  bookmarkedBy          User[]           @relation("BriefBookmarks")
-  // Relation to Conversation (Optional, for brief-specific chat)
-  conversation          Conversation?    @relation(fields: [conversationId], references: [id])
-  conversationId        String?          @unique
-  bookmarks             Bookmark[]
-  aiAssistantLogs       AiAssistantLog[]
-  notifications         Notification[]
-
-  @@index([brandId])
-  @@index([category])
-  @@index([status])
-  @@index([createdAt])
-  @@index([budget])
-  @@map("briefs")
-}
-
-model Proposal {
-  id                String           @id @default(cuid())
-  message           String
-  price             Float
-  currency          String           @default("USD")
-  timelineDays      Int
-  terms             Json?
-  attachments       String[]
-  status            ProposalStatus   @default(DRAFT)
-  submittedAt       DateTime?
-  reviewedAt        DateTime?
-  decidedAt         DateTime?
-  counterPrice      Float?
-  counterTimeline   Int?
-  counterMessage    String?
-  counterTerms      Json?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  briefId           String
-  brief             Brief            @relation(fields: [briefId], references: [id], onDelete: Cascade)
-  manufacturerId    String
-  manufacturer      User             @relation("ManufacturerProposals", fields: [manufacturerId], references: [id], onDelete: Cascade)
-  brandId           String
-  brand             User             @relation("BrandProposals", fields: [brandId], references: [id])
-  counterProposalId String?
-  counterProposal   Proposal?        @relation("CounterProposals", fields: [counterProposalId], references: [id])
-  originalProposal  Proposal[]       @relation("CounterProposals")
-  // Relation to Conversation (Optional, for proposal-specific chat)
-  conversation      Conversation?    @relation(fields: [conversationId], references: [id])
-  conversationId    String?          @unique
-  aiAssistantLogs   AiAssistantLog[]
-  notifications     Notification[]
-
-  @@index([briefId])
-  @@index([manufacturerId])
-  @@index([brandId])
-  @@index([status])
-  @@index([createdAt])
-  @@map("proposals")
-}
-
-// ===================== CHAT SYSTEM MODELS =====================
-model Conversation {
-  id            String         @id @default(cuid())
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  title         String?
-  // Optional links to business entities
-  briefId       String?        @unique
-  brief         Brief?
-  proposalId    String?        @unique
-  proposal      Proposal?
-  // Core chat relations
-  participants  Participant[]
-  messages      Message[]
-  lastMessageAt DateTime?
-  notifications Notification[]
-
-  @@index([lastMessageAt])
-}
-
-model Participant {
-  id             String       @id @default(cuid())
-  userId         String
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userRole       UserType // Uses your existing UserType enum
-  conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  lastReadAt     DateTime     @default(now())
-
-  @@unique([userId, conversationId])
-  @@index([conversationId, lastReadAt])
-}
-
-model Message {
-  id             String       @id @default(cuid())
-  content        String?
-  type           MessageType  @default(TEXT)
-  // File attachment fields
-  fileUrl        String?
-  fileName       String?
-  fileSize       Int?
-  fileType       String?
-  // Status flags
-  isEdited       Boolean      @default(false)
-  isDeleted      Boolean      @default(false)
-  // Core relations
-  senderId       String
-  sender         User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
-  conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  // Timestamps
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-
-  // Indexes for performance [citation:2][citation:6]
-  @@index([conversationId, createdAt]) // Optimized for loading chat history
-  @@index([senderId])
-  @@index([createdAt])
-}
-
-// ===================== EXISTING SUPPORTING MODELS =====================
-// (Keep your existing Bookmark and AiAssistantLog models exactly as they are)
-model Bookmark {
-  id             String   @id @default(cuid())
-  userId         String
-  manufacturerId String?
-  manufacturer   User?    @relation(fields: [manufacturerId], references: [id])
-  briefId        String?
-  brief          Brief?   @relation(fields: [briefId], references: [id])
-  createdAt      DateTime @default(now())
-
-  @@unique([userId, manufacturerId])
-  @@unique([userId, briefId])
-  @@map("bookmarks")
-}
-
-model AiAssistantLog {
-  id         String    @id @default(cuid())
-  prompt     String
-  response   String
-  metadata   Json
-  model      String    @default("gemini-2.0-flash")
-  userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  briefId    String?
-  brief      Brief?    @relation(fields: [briefId], references: [id])
-  proposalId String?
-  proposal   Proposal? @relation(fields: [proposalId], references: [id])
-  createdAt  DateTime  @default(now())
-
-  @@index([userId])
-  @@index([createdAt])
-  @@index([briefId])
-  @@index([proposalId])
-  @@map("ai_assistant_logs")
-}
-
-// ===================== NOTIFICATION MODELS =====================
 enum NotificationType {
   PROPOSAL_RECEIVED
   PROPOSAL_ACCEPTED
@@ -312,91 +353,3 @@ enum NotificationPriority {
   HIGH
   URGENT
 }
-
-model Notification {
-  id       String               @id @default(cuid())
-  type     NotificationType
-  title    String
-  message  String
-  metadata Json? // Additional data like entity IDs
-  priority NotificationPriority @default(MEDIUM)
-
-  // Relations
-  recipientId String
-  recipient   User    @relation("UserNotifications", fields: [recipientId], references: [id], onDelete: Cascade)
-  senderId    String? // Who triggered the notification
-  sender      User?   @relation("SentNotifications", fields: [senderId], references: [id])
-
-  // Entity references (optional)
-  briefId        String?
-  brief          Brief?        @relation(fields: [briefId], references: [id])
-  proposalId     String?
-  proposal       Proposal?     @relation(fields: [proposalId], references: [id])
-  conversationId String?
-  conversation   Conversation? @relation(fields: [conversationId], references: [id])
-
-  // Status
-  isRead     Boolean   @default(false)
-  isArchived Boolean   @default(false)
-  readAt     DateTime?
-  archivedAt DateTime?
-
-  // Timestamps
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  expiresAt DateTime? // For time-sensitive notifications
-
-  // Indexes
-  @@index([recipientId, createdAt])
-  @@index([recipientId, isRead])
-  @@index([recipientId, isArchived])
-  @@index([createdAt])
-  @@index([type])
-  @@map("notifications")
-}
-
-model UserNotificationSettings {
-  id     String @id @default(cuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Email preferences
-  emailProposals Boolean @default(true)
-  emailMessages  Boolean @default(true)
-  emailSystem    Boolean @default(true)
-  emailMarketing Boolean @default(false)
-
-  // Push preferences
-  pushProposals Boolean @default(true)
-  pushMessages  Boolean @default(true)
-  pushSystem    Boolean @default(true)
-
-  // In-app preferences
-  inAppProposals Boolean @default(true)
-  inAppMessages  Boolean @default(true)
-  inAppSystem    Boolean @default(true)
-
-  // Quiet hours
-  quietHoursStart   Int?    @default(22) // 10 PM
-  quietHoursEnd     Int?    @default(8) // 8 AM
-  quietHoursEnabled Boolean @default(false)
-
-  // Digest preferences
-  dailyDigest  Boolean @default(true)
-  weeklyDigest Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("user_notification_settings")
-}
-
-// ===================== RELATIONSHIP NOTES =====================
-// 1. User → Brief (One-to-Many): A brand can create many briefs
-// 2. Brief → Proposal (One-to-Many): A brief can have many proposals
-// 3. User → Proposal (One-to-Many as Manufacturer): A manufacturer can submit many proposals
-// 4. User → Proposal (One-to-Many as Brand): A brand can receive many proposals
-// 5. Proposal → Proposal (One-to-Many for counters): A proposal can have many counter proposals
-// 6. User → Message (One-to-Many): A user can send/receive many messages
-// 7. Brief → Message (One-to-Many): A brief can have related messages
-// 8. Proposal → Message (One-to-Many): A proposal can have related messages

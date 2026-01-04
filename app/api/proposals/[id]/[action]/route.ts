@@ -12,6 +12,7 @@ export async function POST(
   try {
     const { id, action } = await context.params;
     const user = await getCurrentUser();
+    console.log(user);
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -251,6 +252,40 @@ const handleAccept = async (proposal: any, user: any, data: any) => {
   // Create notifications
   // await createNotification(...) // For manufacturer
   // await createNotification(...) // For brand
+  const createNotification = async (
+    type: string,
+    recipientId: string,
+    title: string,
+    message: string,
+    options?: any
+  ) => {
+    // Call your notification API
+    await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/notifications`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type,
+        recipientId,
+        senderId: proposal.brandId,
+        title,
+        message,
+        metadata: { proposalId: proposal.id },
+        entityIds: { proposalId: proposal.id },
+      }),
+    });
+  };
+
+  // In handleAccept function, after transaction:
+  await createNotification(
+    "PROPOSAL_ACCEPTED",
+    proposal.manufacturerId,
+    "Proposal Accepted!",
+    `Your proposal for "${proposal.brief.title}" has been accepted by ${proposal.brand.company}`,
+    {
+      proposalId: proposal.id,
+      briefId: proposal.briefId,
+    }
+  );
 
   return NextResponse.json({
     success: true,
@@ -291,7 +326,39 @@ const handleReject = async (proposal: any, user: any, data: any) => {
   });
 
   // Create notification for manufacturer
+  const createNotification = async (
+    type: string,
+    recipientId: string,
+    title: string,
+    message: string,
+    options?: any
+  ) => {
+    // Call your notification API
+    await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/notifications`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type,
+        recipientId,
+        senderId: proposal.brandId,
+        title,
+        message,
+        metadata: { proposalId: proposal.id },
+        entityIds: { proposalId: proposal.id },
+      }),
+    });
+  };
   // await createNotification(...)
+  await createNotification(
+    "PROPOSAL_REJECTED",
+    proposal.manufacturerId,
+    "Proposal Status Update",
+    `Your proposal for "${proposal.brief.title}" was not selected`,
+    {
+      proposalId: proposal.id,
+      briefId: proposal.briefId,
+    }
+  );
 
   return NextResponse.json({
     success: true,
@@ -357,8 +424,39 @@ const handleCounter = async (proposal: any, user: any, data: any) => {
   });
 
   // Create notification for manufacturer
+  const createNotification = async (
+    type: string,
+    recipientId: string,
+    title: string,
+    message: string,
+    options?: any
+  ) => {
+    // Call your notification API
+    await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/notifications`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type,
+        recipientId,
+        senderId: proposal.brandId,
+        title,
+        message,
+        metadata: { proposalId: proposal.id },
+        entityIds: { proposalId: proposal.id },
+      }),
+    });
+  };
   // await createNotification(...)
-
+  await createNotification(
+    "PROPOSAL_COUNTERED",
+    proposal.manufacturerId,
+    "Counter Offer Received",
+    `${proposal.brand.company} sent you a counter offer for "${proposal.brief.title}"`,
+    {
+      proposalId: proposal.id,
+      briefId: proposal.briefId,
+    }
+  );
   // Create conversation message if conversation exists
   if (proposal.conversationId) {
     await prisma.message.create({

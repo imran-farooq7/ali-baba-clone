@@ -23,7 +23,7 @@ export default async function ManufacturerProfilePage() {
       },
     }
   );
-
+  console.log(response, "res from manu profile");
   if (!response.ok) {
     throw new Error("Failed to fetch manufacturer data");
   }

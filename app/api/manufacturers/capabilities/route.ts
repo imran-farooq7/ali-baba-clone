@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/prisma/prisma";
+import { revalidatePath } from "next/cache";
 
 export async function POST(request: NextRequest) {
   try {
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
         },
       },
     });
-
+    revalidatePath("/manufacturer/profile");
     return NextResponse.json({
       success: true,
       manufacturer: {

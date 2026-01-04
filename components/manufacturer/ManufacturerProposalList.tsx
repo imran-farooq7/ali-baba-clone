@@ -19,7 +19,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { ProposalStatus, Status } from "@/app/generated/prisma/enums";
+import ChatButton from "../chat/ui/Chat-button";
+import { BriefStatus, ProposalStatus } from "@/lib/generated/prisma/enums";
 
 interface Proposal {
   id: string;
@@ -31,10 +32,11 @@ interface Proposal {
     id: string;
     title: string;
     budget: number;
-    status: Status;
+    status: BriefStatus;
     brand: {
       name: string;
       company: string | null;
+      id: string;
     };
   };
 }
@@ -255,7 +257,7 @@ export default function ManufacturerProposalList({
                         >
                           <Eye className="h-4 w-4" />
                         </Link>
-                        {proposal.status === "PENDING" && (
+                        {proposal.status === "UNDER_REVIEW" && (
                           <>
                             <Link
                               href={`/manufacturer/proposals/${proposal.id}/edit`}
@@ -275,13 +277,7 @@ export default function ManufacturerProposalList({
                             </button>
                           </>
                         )}
-                        <Link
-                          href={`/manufacturer/chat/${proposal.brief.brand.company}`}
-                          className="text-gray-600 hover:text-gray-900"
-                          title="Message"
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                        </Link>
+                        <ChatButton />
                       </div>
                     </td>
                   </tr>

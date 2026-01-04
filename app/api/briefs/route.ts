@@ -111,6 +111,36 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+    // After publishing a brief, notify matching manufacturers
+    const matchingManufacturers = await prisma.user.findMany({
+      where: {
+        type: "MANUFACTURER",
+        industries: { hasSome: brief.category ? [brief.category] : [] },
+      },
+      take: 50, // Limit to prevent spam
+    });
+
+    await Promise.all(
+      matchingManufacturers.map(async (manufacturer) => {
+        await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/notifications`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "BRIEF_PUBLISHED",
+            recipientId: manufacturer.id,
+            senderId: user.id,
+            title: "New Brief Available",
+            message: `New brief "${brief.title}" matches your capabilities`,
+            metadata: {
+              briefId: brief.id,
+              category: brief.category,
+              budget: brief.budget,
+            },
+            entityIds: { briefId: brief.id },
+          }),
+        });
+      })
+    );
 
     return NextResponse.json(
       {

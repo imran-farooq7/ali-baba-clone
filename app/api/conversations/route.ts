@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
             },
           },
         },
-        messages: {
+        Message: {
           take: 1,
           orderBy: { createdAt: "desc" },
           select: {
@@ -264,6 +264,7 @@ export async function POST(request: NextRequest) {
         });
       }
     });
+    // After creating a message, add:
 
     return NextResponse.json({
       success: true,

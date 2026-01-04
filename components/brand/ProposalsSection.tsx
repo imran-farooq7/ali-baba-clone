@@ -14,6 +14,9 @@ interface ProposalsSectionProps {
         avatar: string | null;
         verified: boolean;
       };
+      brand: {
+        name: string;
+      };
     }
   >;
 }
@@ -79,14 +82,18 @@ export default function ProposalsSection({
                     />
                   ) : (
                     <span className="text-gray-600 font-semibold">
-                      {proposal.manufacturer.name.charAt(0)}
+                      {proposal.status === "COUNTERED"
+                        ? proposal.brand.name
+                        : proposal.manufacturer.name}
                     </span>
                   )}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-medium text-gray-900">
-                      {proposal.manufacturer.company}
+                      {proposal.status === "COUNTERED"
+                        ? proposal.brand.name
+                        : proposal.manufacturer.company}
                     </h3>
                     {proposal.manufacturer.verified && (
                       <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
@@ -95,7 +102,9 @@ export default function ProposalsSection({
                     )}
                   </div>
                   <p className="text-sm text-gray-500">
-                    {proposal.manufacturer.name}
+                    {proposal.status === "COUNTERED"
+                      ? proposal.brand.name
+                      : proposal.manufacturer.name}
                   </p>
                 </div>
               </div>

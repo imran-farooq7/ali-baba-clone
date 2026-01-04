@@ -1,35 +1,22 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import {
-  ArrowLeft,
-  MoreVertical,
-  Phone,
-  Video,
-  Info,
-  Paperclip,
-  Image as ImageIcon,
-  File,
-  X,
-  Loader2,
-} from "lucide-react";
-import { supabaseRealtime, uploadChatFile } from "@/lib/supabase/realtime";
+import { Loader2, Paperclip, ImageIcon, File, X } from "lucide-react";
+import { supabaseRealtime } from "@/lib/supabase/realtime";
 import { ChatHeader } from "../ui/chat-header";
 import { MessageList } from "../ui/message-list";
 import { MessageInput } from "../ui/message-input";
 
 interface ChatWindowContainerProps {
   conversation: any;
+  currentUserId: string;
   onBack?: () => void;
-  onTyping: (isTyping: boolean) => void;
-  onMessageSent: () => void;
 }
 
 export default function ChatWindowContainer({
   conversation,
+  currentUserId,
   onBack,
-  onTyping,
-  onMessageSent,
 }: ChatWindowContainerProps) {
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,11 +28,13 @@ export default function ChatWindowContainer({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout>();
+  const typingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const channelRef = useRef<any>(null);
 
   // Fetch messages
   useEffect(() => {
+    if (!conversation?.id) return;
+
     fetchMessages();
     setupRealtime();
 
@@ -54,7 +43,7 @@ export default function ChatWindowContainer({
         channelRef.current.unsubscribe();
       }
     };
-  }, [conversation.id]);
+  }, [conversation?.id]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -62,16 +51,18 @@ export default function ChatWindowContainer({
   }, [messages]);
 
   const fetchMessages = async () => {
+    if (!conversation?.id) return;
+
     try {
       setLoading(true);
       const response = await fetch(
-        `/api/conversations/${conversation.id}/messages`
+        `/api/conversations/${conversation.id}/messages?limit=50`
       );
 
       if (!response.ok) throw new Error("Failed to fetch messages");
 
       const data = await response.json();
-      setMessages(data.messages);
+      setMessages(data.messages.reverse()); // Reverse to show oldest first
     } catch (error) {
       console.error("Error fetching messages:", error);
     } finally {
@@ -80,19 +71,69 @@ export default function ChatWindowContainer({
   };
 
   const setupRealtime = () => {
-    if (channelRef.current) {
-      channelRef.current.unsubscribe();
-    }
+    if (!conversation?.id || channelRef.current) return;
 
-    const channel = supabaseRealtime.channel(`conversation:${conversation.id}`);
+    const channel = supabaseRealtime
+      .channel(`conversation:${conversation.id}`)
+      .on(
+        "postgres_changes", // 🚨 KEY CHANGE: Use postgres_changes not broadcast
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "Message",
+          filter: `conversation_id=eq.${conversation.id}`,
+        },
+        (payload) => {
+          console.log("🎯 New message via Postgres:", payload.new);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: payload.new.id,
+              content: payload.new.content,
+              type: payload.new.type,
+              fileUrl: payload.new.file_url,
+              fileName: payload.new.file_name,
+              fileSize: payload.new.file_size,
+              fileType: payload.new.file_type,
+              isEdited: payload.new.isEdited,
+              isDeleted: payload.new.isDeleted,
+              senderId: payload.new.senderId,
+              conversationId: payload.new.conversation_id,
+              createdAt: new Date(payload.new.created_at),
+              updatedAt: new Date(payload.new.updatedAt),
+              // Note: sender data won't be in payload, need to fetch separately
+            },
+          ]);
+          scrollToBottom();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "conversations",
+          filter: `id=eq.${conversation.id}`,
+        },
+        (payload) => {
+          console.log("Conversation updated:", payload.new);
+          // Handle conversation updates (like last message time)
+        }
+      )
+      .subscribe((status) => {
+        console.log(`Chat subscription status: ${status}`);
+      });
 
-    channel
-      .on("broadcast", { event: "new_message" }, ({ payload }) => {
-        setMessages((prev) => [...prev, payload.message]);
-        scrollToBottom();
-      })
-      .on("broadcast", { event: "typing" }, ({ payload }) => {
-        if (payload.userId !== "current-user-id") {
+    channelRef.current = channel;
+  };
+
+  // Optional: Set up typing indicator via broadcast
+  const setupTypingIndicator = () => {
+    const typingChannel = supabaseRealtime.channel(`typing:${conversation.id}`);
+
+    typingChannel
+      .on("broadcast", { event: "typing" }, (payload) => {
+        if (payload.userId !== currentUserId) {
           setTypingUsers((prev) => {
             if (payload.isTyping && !prev.includes(payload.userId)) {
               return [...prev, payload.userId];
@@ -105,15 +146,18 @@ export default function ChatWindowContainer({
       })
       .subscribe();
 
-    channelRef.current = channel;
+    return typingChannel;
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
   };
 
   const handleSendMessage = async (content: string) => {
     if (!content.trim() && !filePreview) return;
+    if (!conversation?.id) return;
 
     try {
       setSending(true);
@@ -138,12 +182,11 @@ export default function ChatWindowContainer({
 
       const data = await response.json();
 
-      // Add message to local state
-      setMessages((prev) => [...prev, data.message]);
+      // Message will be added via realtime subscription
+      // No need to manually add to state
+
       setFilePreview(null);
       setShowFileUpload(false);
-
-      onMessageSent();
       scrollToBottom();
     } catch (error) {
       console.error("Error sending message:", error);
@@ -154,7 +197,24 @@ export default function ChatWindowContainer({
 
   const handleTyping = useCallback(
     (isTyping: boolean) => {
-      onTyping(isTyping);
+      if (!conversation?.id) return;
+
+      // Send typing indicator via broadcast
+      const channel = supabaseRealtime.channel(`typing:${conversation.id}`);
+      channel.subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          channel.send({
+            type: "broadcast",
+            event: "typing",
+            payload: {
+              userId: currentUserId,
+              isTyping,
+              conversationId: conversation.id,
+              timestamp: new Date().toISOString(),
+            },
+          });
+        }
+      });
 
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
@@ -162,11 +222,11 @@ export default function ChatWindowContainer({
 
       if (isTyping) {
         typingTimeoutRef.current = setTimeout(() => {
-          onTyping(false);
+          handleTyping(false);
         }, 3000);
       }
     },
-    [onTyping]
+    [conversation?.id, currentUserId]
   );
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -232,9 +292,8 @@ export default function ChatWindowContainer({
       {/* Header */}
       <ChatHeader
         conversation={conversation}
-        // onBack={onBack}
-        // typingUsers={typingUsers}
-        // onlineUsers={[]} // You would pass actual online users
+        onBack={onBack}
+        typingUsers={typingUsers}
       />
 
       {/* Messages */}
@@ -253,17 +312,14 @@ export default function ChatWindowContainer({
             </h3>
             <p className="text-gray-600 max-w-md">
               Send your first message to{" "}
-              {conversation.participants
-                .filter((p: any) => p.userId !== "current-user-id")
-                .map((p: any) => p.user.name)
+              {conversation?.participants
+                ?.filter((p: any) => p.userId !== currentUserId)
+                .map((p: any) => p.user?.name)
                 .join(", ")}
             </p>
           </div>
         ) : (
-          <MessageList
-            messages={messages}
-            currentUserId="current-user-id" // You would get this from auth
-          />
+          <MessageList messages={messages} currentUserId={currentUserId} />
         )}
         <div ref={messagesEndRef} />
       </div>
@@ -353,9 +409,7 @@ export default function ChatWindowContainer({
 
         <MessageInput
           onSendMessage={handleSendMessage}
-          onTyping={handleTyping}
           disabled={sending || uploadingFile}
-          placeholder="Type your message..."
         />
       </div>
     </div>

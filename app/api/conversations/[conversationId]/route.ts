@@ -83,7 +83,7 @@ export async function GET(
           },
         },
         _count: {
-          select: { messages: true },
+          select: { Message: true },
         },
       },
     });

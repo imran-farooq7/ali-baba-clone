@@ -71,6 +71,11 @@ export default async function BriefDetailPage({
       },
       proposals: {
         include: {
+          brand: {
+            select: {
+              name: true,
+            },
+          },
           manufacturer: {
             select: {
               id: true,
@@ -86,7 +91,7 @@ export default async function BriefDetailPage({
       _count: {
         select: {
           proposals: true,
-          bookmarkedBy: true,
+          bookmarks: true,
         },
       },
     },
@@ -450,10 +455,10 @@ export default async function BriefDetailPage({
               </h2>
               <div className="space-y-3">
                 <ChatButton
-                  briefId={brief.id}
-                  participants={brief.proposals.map((p) => p.manufacturer.id)}
-                  title={`Chat for ${brief.title}`}
-                  className="w-full justify-center"
+                // briefId={brief.id}
+                // participants={brief.proposals.map((p) => p.manufacturer.id)}
+                // title={`Chat for ${brief.title}`}
+                // className="w-full justify-center"
                 />
 
                 <button className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">

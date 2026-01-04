@@ -23,6 +23,8 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { Capability, Certification, CompanyInfo } from "@/lib/types";
+import { routerServerGlobal } from "next/dist/server/lib/router-utils/router-server-context";
+import { useRouter } from "next/navigation";
 
 export default function CapabilitySetupForm({
   manufacturerId,
@@ -93,7 +95,7 @@ export default function CapabilitySetupForm({
     industries: ["electronics", "automotive", "medical"],
     description: "",
   });
-
+  const router = useRouter();
   // Add capability
   const addCapability = () => {
     if (!newCapability.name.trim() || !newCapability.category.trim()) {
@@ -258,6 +260,7 @@ export default function CapabilitySetupForm({
       if (response.ok) {
         alert("Capabilities updated successfully!");
         // Move to success step or redirect
+        router.refresh();
         setStep(4);
       } else {
         alert(data.error || "Failed to update capabilities");

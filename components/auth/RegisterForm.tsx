@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import toast from "react-hot-toast";
 
 export default function RegisterForm() {
   const router = useRouter();
@@ -63,7 +64,7 @@ export default function RegisterForm() {
             company: formData.company,
             user_type: formData.userType,
           },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${window.location.origin}/api/auth/callback`,
         },
       });
 
@@ -89,10 +90,12 @@ export default function RegisterForm() {
       }
 
       // Show success message and redirect
-      alert(
-        "Registration successful! Please check your email to confirm your account."
+      toast.success(
+        "please check your inbox to confirm your email verfication"
       );
-      router.push("/auth/login");
+      setTimeout(() => {
+        router.push("/login");
+      }, 2000);
     } catch (error: any) {
       setError(error.message || "Registration failed. Please try again.");
     } finally {

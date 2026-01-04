@@ -1,7 +1,6 @@
 // lib/auth.ts
 
 import { prisma } from "@/prisma/prisma";
-import { Prisma } from "./generated/prisma/browser";
 import { createClient } from "./supabase/server";
 
 // Fetch current user from Supabase and your Prisma database
@@ -15,7 +14,13 @@ export const getCurrentUser = async () => {
       error,
     } = await supabase.auth.getUser();
 
-    if (error || !supabaseUser) {
+    if (error) {
+      console.error("Supabase auth error:", error);
+      return null;
+    }
+
+    if (!supabaseUser) {
+      console.warn("No Supabase user found - user is not logged in");
       return null;
     }
 
@@ -26,12 +31,10 @@ export const getCurrentUser = async () => {
     // Validate type
     const validTypes = ["BRAND", "MANUFACTURER", "ADMIN"];
     const type = validTypes.includes(userType) ? userType : "BRAND";
-
     let dbUser = await prisma.user.findUnique({
       where: { id: supabaseUser.id },
     });
-
-    if (!dbUser) {
+    if (dbUser === null) {
       dbUser = await prisma.user.create({
         data: {
           id: supabaseUser.id,
@@ -49,7 +52,6 @@ export const getCurrentUser = async () => {
         },
       });
     }
-
     return dbUser;
   } catch (error) {
     console.error("Error in getCurrentUser:", error);

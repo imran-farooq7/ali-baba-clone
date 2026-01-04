@@ -6,7 +6,6 @@ import { useConversations as createConversations } from "./use-conversations";
 // Main chat hook factory
 export const useChat = (supabaseClient: any, currentUserId: string) => {
   const useConversations = createConversations(currentUserId);
-  const useMessages = createUseMessages(supabaseClient);
 
   return () => {
     const [activeConversationId, setActiveConversationId] = useState<
@@ -15,7 +14,8 @@ export const useChat = (supabaseClient: any, currentUserId: string) => {
 
     // Use the specialized hooks
     const conversations = useConversations();
-    const messages = useMessages(activeConversationId!, currentUserId);
+    const { messages, loading, fetchMessages, sendMessage, sending, error } =
+      createUseMessages(activeConversationId!, currentUserId);
 
     // Combined actions
     const setActiveConversation = (conversationId: string | null) => {
@@ -57,12 +57,11 @@ export const useChat = (supabaseClient: any, currentUserId: string) => {
       startConversation,
 
       // Messages
-      messages: messages.messages,
-      messagesLoading: messages.isLoading,
-      messagesSending: messages.isSending,
-      hasMoreMessages: messages.hasMore,
-      sendMessage: messages.sendMessage,
-      loadMoreMessages: messages.fetchMessages,
+      messages: messages,
+      messagesLoading: loading,
+      messagesSending: sending,
+      sendMessage: sendMessage,
+      loadMoreMessages: fetchMessages,
     };
   };
 };

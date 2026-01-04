@@ -14,9 +14,9 @@ const BrandLayout = async ({ children }: { children: ReactNode }) => {
     <html>
       <body>
         <AIAssistantProvider>
-          <Toaster />
           <BrandDashboardLayout user={user}>{children}</BrandDashboardLayout>;
           <AiChatAssistant />
+          <Toaster />
         </AIAssistantProvider>
       </body>
     </html>

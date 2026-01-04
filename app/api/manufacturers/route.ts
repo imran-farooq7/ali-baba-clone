@@ -59,11 +59,11 @@ export async function GET(request: NextRequest) {
           select: {
             sentProposals: true, // Proposals submitted by this manufacturer
             receivedBriefs: true, // Briefs this manufacturer can see
-            bookmarkedBy: true, // How many users bookmarked this manufacturer
+            bookmarks: true, // How many users bookmarked this manufacturer
           },
         },
         // Optional: include bookmarks for current user
-        bookmarkedBy: {
+        bookmarks: {
           where: {
             // You'll need to pass current user ID
             // id: currentUserId
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
       const rating = calculateManufacturerRating(user.id); // This would need a separate query
 
       // Check if current user bookmarked this manufacturer
-      const isBookmarked = user.bookmarkedBy.length > 0;
+      const isBookmarked = user.bookmarks.length > 0;
 
       return {
         id: user.id,

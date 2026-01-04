@@ -61,7 +61,7 @@ export default async function ManufacturerDashboardPage() {
         brief: {
           include: {
             brand: {
-              select: { name: true, company: true },
+              select: { name: true, company: true, id: true },
             },
           },
         },

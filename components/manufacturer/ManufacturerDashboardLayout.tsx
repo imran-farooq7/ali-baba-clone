@@ -12,7 +12,6 @@ import {
   MessageSquare,
   BarChart,
   FileText,
-  Settings,
   Users,
   CheckCircle,
   Award,
@@ -20,19 +19,19 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LogoutBtn from "../auth/logout-btn";
+import NotificationBell from "../notifications/NotificationBell";
 
 const navigation = [
   { name: "Dashboard", href: "/manufacturer/dashboard", icon: BarChart },
   { name: "Available Briefs", href: "/manufacturer/briefs", icon: Briefcase },
   { name: "My Proposals", href: "/manufacturer/proposals", icon: FileText },
-  { name: "Messages", href: "/manufacturer/messages", icon: MessageSquare },
+  // { name: "Messages", href: "/manufacturer/messages", icon: MessageSquare },
   {
     name: "Profile & Capabilities",
     href: "/manufacturer/profile",
     icon: Factory,
   },
   { name: "Brands", href: "/manufacturer/brands", icon: Users },
-  { name: "Settings", href: "/manufacturer/settings", icon: Settings },
 ];
 
 export default function ManufacturerDashboardLayout({
@@ -239,9 +238,7 @@ export default function ManufacturerDashboardLayout({
 
           {/* Notifications & alerts */}
           <div className="flex items-center gap-x-4 lg:gap-x-6">
-            <button className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500">
-              <Bell className="h-6 w-6" />
-            </button>
+            <NotificationBell userId={user.id} />
             <div className="hidden lg:block h-6 w-px bg-gray-200" />
             <div className="flex items-center gap-x-3">
               {user?.verified ? (

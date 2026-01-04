@@ -1,181 +1,133 @@
-// components/chat/hooks/use-messages.ts
-import { createClient } from "@/lib/supabase/client";
-import { useState, useCallback, useEffect } from "react";
-import { validateMessageInput } from "../../validators";
+// hooks/useMessages.ts
+"use client";
 
-export interface Message {
-  id: string;
-  content?: string;
-  senderId: string;
-  conversationId: string;
-  fileUrl?: string;
-  fileName?: string;
-  fileSize?: number;
-  fileType?: string;
-  type: "TEXT" | "FILE";
-  createdAt: string;
-  sender: {
-    id: string;
-    name: string;
-    avatar?: string;
-    type: string;
-  };
-}
+import { useState, useEffect, useCallback } from "react";
+import { supabaseRealtime } from "@/lib/supabase/realtime";
 
-// Create supabase client once
-const supabase = createClient();
-
-// Simplified hook
 export const useMessages = (
-  conversationId?: string,
-  currentUserId?: string
+  conversationId: string | null,
+  currentUserId: string
 ) => {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [cursor, setCursor] = useState<string | null>(null);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Fetch messages
-  const fetchMessages = useCallback(
-    async (loadMore = false) => {
-      if (!conversationId || !currentUserId) return;
+  // Fetch initial messages
+  const fetchMessages = useCallback(async () => {
+    if (!conversationId) return;
 
-      setIsLoading(true);
-      try {
-        const url = new URL(
-          `/api/chat/${conversationId}`,
-          window.location.origin
-        );
-        if (loadMore && cursor) {
-          url.searchParams.set("cursor", cursor);
-        }
+    setLoading(true);
+    setError(null);
 
-        const response = await fetch(url.toString());
-        if (!response.ok) throw new Error("Failed to fetch messages");
+    try {
+      const response = await fetch(
+        `/api/conversations/${conversationId}/messages?limit=50`
+      );
+      if (!response.ok) throw new Error("Failed to fetch messages");
 
-        const data = await response.json();
+      const data = await response.json();
+      setMessages(data.messages.reverse()); // Oldest first
+    } catch (err) {
+      setError("Failed to load messages");
+      console.error("Error fetching messages:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [conversationId]);
 
-        if (loadMore) {
-          setMessages((prev) => [...prev, ...data.messages]);
-        } else {
-          setMessages(data.messages);
-        }
-
-        setHasMore(data.nextCursor !== null);
-        setCursor(data.nextCursor);
-      } catch (err) {
-        console.error("Error fetching messages:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [conversationId, currentUserId, cursor]
-  );
-
-  // Send message
-  const sendMessage = useCallback(
-    async (content?: string, file?: File): Promise<Message> => {
-      if (!conversationId) {
-        throw new Error("No active conversation");
-      }
-
-      const validation = validateMessageInput(content, file);
-      if (!validation.valid) {
-        throw new Error(validation.error);
-      }
-
-      setIsSending(true);
-      try {
-        let fileData = null;
-
-        if (file) {
-          const formData = new FormData();
-          formData.append("file", file);
-          formData.append("conversationId", conversationId);
-
-          const uploadResponse = await fetch("/api/chat/upload", {
-            method: "POST",
-            body: formData,
-          });
-
-          if (!uploadResponse.ok) {
-            const error = await uploadResponse.json();
-            throw new Error(error.error || "Failed to upload file");
-          }
-
-          fileData = await uploadResponse.json();
-        }
-
-        const response = await fetch(`/api/chat/${conversationId}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            content: content?.trim(),
-            fileUrl: fileData?.url,
-            fileName: fileData?.fileName,
-            fileSize: fileData?.fileSize,
-            fileType: fileData?.fileType,
-          }),
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Failed to send message");
-        }
-
-        const newMessage = await response.json();
-        setMessages((prev) => [...prev, newMessage]);
-        return newMessage;
-      } catch (err) {
-        console.error("Error sending message:", err);
-        throw err;
-      } finally {
-        setIsSending(false);
-      }
-    },
-    [conversationId]
-  );
-
-  // Setup realtime subscription
+  // Set up realtime subscription
   useEffect(() => {
-    if (!conversationId || !supabase) return;
+    if (!conversationId) return;
 
-    const channel = supabase
-      .channel(`chat:${conversationId}`)
+    const channel = supabaseRealtime
+      .channel(`messages:${conversationId}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
-          table: "messages",
-          filter: `conversationId=eq.${conversationId}`,
+          table: "Message",
+          filter: `conversation_id=eq.${conversationId}`,
         },
-        (payload) => {
-          const newMessage = payload.new as Message;
-          setMessages((prev) => [...prev, newMessage]);
+        async (payload) => {
+          // Fetch sender data for the new message
+          const { data: senderData } = await supabaseRealtime
+            .from("users")
+            .select("id, name, avatar, company, type")
+            .eq("id", payload.new.senderId)
+            .single();
+
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: payload.new.id,
+              content: payload.new.content,
+              type: payload.new.type,
+              fileUrl: payload.new.file_url,
+              fileName: payload.new.file_name,
+              fileSize: payload.new.file_size,
+              fileType: payload.new.file_type,
+              isEdited: payload.new.isEdited,
+              isDeleted: payload.new.isDeleted,
+              senderId: payload.new.senderId,
+              conversationId: payload.new.conversation_id,
+              createdAt: new Date(payload.new.created_at),
+              updatedAt: new Date(payload.new.updatedAt),
+              sender: senderData,
+            },
+          ]);
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      channel.unsubscribe();
     };
   }, [conversationId]);
 
-  // Load initial messages
-  useEffect(() => {
-    if (conversationId && currentUserId) {
-      fetchMessages(false);
-    }
-  }, [conversationId, currentUserId, fetchMessages]);
+  // Send message
+  const sendMessage = useCallback(
+    async (content: string, file?: File) => {
+      if (!conversationId) return;
+
+      setSending(true);
+      try {
+        const formData = new FormData();
+        formData.append("content", content);
+        formData.append("type", file ? "FILE" : "TEXT");
+
+        if (file) {
+          formData.append("file", file);
+        }
+
+        const response = await fetch(
+          `/api/conversations/${conversationId}/messages`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        if (!response.ok) throw new Error("Failed to send message");
+
+        return await response.json();
+      } catch (err) {
+        console.error("Error sending message:", err);
+        throw err;
+      } finally {
+        setSending(false);
+      }
+    },
+    [conversationId]
+  );
 
   return {
     messages,
-    isLoading,
-    isSending,
-    hasMore,
-    fetchMessages: () => fetchMessages(true),
+    loading,
+    sending,
+    error,
+    fetchMessages,
     sendMessage,
   };
 };

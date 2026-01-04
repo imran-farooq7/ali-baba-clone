@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/prisma/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import {
-  broadcastNotification,
+  broadcastManualNotification,
   calculateExpiration,
-  shouldSendNotification,
+  shouldSendNotification, // Updated import
 } from "@/lib/notifications/service";
+import { supabaseRealtime } from "@/lib/supabase/realtime"; // Import Supabase client
 
 // GET /api/notifications - Get user's notifications
 export async function GET(request: NextRequest) {
@@ -158,40 +159,116 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Create notification
-    const notification = await prisma.notification.create({
-      data: {
-        type,
-        recipientId,
-        senderId: senderId || user.id,
-        title,
-        message,
+    // =============================================
+    // 🚨 CRITICAL FIX: Use DIRECT Supabase insert
+    // instead of Prisma to trigger realtime
+    // =============================================
+
+    // Create notification DIRECTLY in Supabase (triggers realtime automatically)
+    const { data: supabaseData, error: supabaseError } = await supabaseRealtime
+      .from("notifications")
+      .insert({
+        // Map to your actual database column names (snake_case)
+        type: type,
+        recipient_id: recipientId,
+        sender_id: senderId || user.id,
+        title: title,
+        message: message,
         metadata: metadata || {},
         priority: priority || "MEDIUM",
-        briefId: entityIds?.briefId,
-        proposalId: entityIds?.proposalId,
-        conversationId: entityIds?.conversationId,
-        expiresAt: calculateExpiration(type),
-      },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            name: true,
-            avatar: true,
-            company: true,
-          },
-        },
-      },
-    });
+        brief_id: entityIds?.briefId,
+        proposal_id: entityIds?.proposalId,
+        conversation_id: entityIds?.conversationId,
+        expires_at: calculateExpiration(type),
+        is_read: false,
+        is_archived: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select(
+        `
+        *,
+        sender:users (
+          id, name, avatar, company
+        )
+      `
+      )
+      .single();
 
-    // Broadcast in real-time
-    await broadcastNotification(notification);
+    if (supabaseError) {
+      console.error("Supabase insert error:", supabaseError);
+      throw new Error(
+        `Failed to create notification: ${supabaseError.message}`
+      );
+    }
+
+    // Convert snake_case to camelCase for frontend
+    const notification = {
+      id: supabaseData.id,
+      type: supabaseData.type,
+      recipientId: supabaseData.recipient_id,
+      senderId: supabaseData.sender_id,
+      title: supabaseData.title,
+      message: supabaseData.message,
+      metadata: supabaseData.metadata,
+      priority: supabaseData.priority,
+      briefId: supabaseData.brief_id,
+      proposalId: supabaseData.proposal_id,
+      conversationId: supabaseData.conversation_id,
+      isRead: supabaseData.is_read,
+      isArchived: supabaseData.is_archived,
+      createdAt: new Date(supabaseData.created_at),
+      expiresAt: supabaseData.expires_at
+        ? new Date(supabaseData.expires_at)
+        : null,
+      updatedAt: supabaseData.updated_at
+        ? new Date(supabaseData.updated_at)
+        : null,
+      sender: supabaseData.sender
+        ? {
+            id: supabaseData.sender.id,
+            name: supabaseData.sender.name,
+            avatar: supabaseData.sender.avatar,
+            company: supabaseData.sender.company,
+          }
+        : null,
+    };
+
+    // =============================================
+    // OPTIONAL: Also create in Prisma for consistency
+    // =============================================
+    try {
+      await prisma.notification.create({
+        data: {
+          id: notification.id, // Use same ID
+          type,
+          recipientId,
+          senderId: senderId || user.id,
+          title,
+          message,
+          metadata: metadata || {},
+          priority: priority || "MEDIUM",
+          briefId: entityIds?.briefId,
+          proposalId: entityIds?.proposalId,
+          conversationId: entityIds?.conversationId,
+          expiresAt: calculateExpiration(type),
+          isRead: false,
+          isArchived: false,
+        },
+      });
+    } catch (prismaError) {
+      console.warn("Prisma sync failed (non-critical):", prismaError);
+      // Continue anyway - Supabase insert already succeeded
+    }
+
+    // Optional: Send manual broadcast (not required for realtime)
+    await broadcastManualNotification(notification);
 
     return NextResponse.json({
       success: true,
       notification,
       message: "Notification created and sent",
+      realtimeTriggered: true, // Confirm realtime will work
     });
   } catch (error: any) {
     console.error("Notification creation error:", error);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/prisma/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { ProposalStatus } from "@/lib/generated/prisma/enums";
 
 // GET /api/proposals - Get proposals with filters
 export async function GET(request: NextRequest) {
@@ -181,7 +182,7 @@ export async function POST(request: NextRequest) {
         timelineDays: parseInt(timelineDays),
         terms: terms || {},
         attachments: attachments || [],
-        status: "DRAFT",
+        status: "SUBMITTED" as ProposalStatus,
         briefId,
         manufacturerId: user.id,
         brandId: brief.brandId,

@@ -1,36 +1,24 @@
 // components/proposals/ProposalDetail.tsx - UPDATED FOR YOUR API
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
-import {
-  DollarSign,
-  Calendar,
-  MessageSquare,
-  User,
-  Building,
-  CheckCircle,
-  XCircle,
-  Clock,
-  AlertCircle,
-  FileText,
-  Package,
-  Globe,
-  Phone,
-  Mail,
-  TrendingUp,
-  ArrowRight,
-  Download,
-  Printer,
-  Share2,
-  Copy,
-  Send,
-  RotateCcw,
-} from "lucide-react";
-import ProposalStatusBadge from "./ProposalStatusBadge";
-import CounterOfferForm from "./CounterOfferForm";
-import AcceptProposalModal from "./AcceptProposalModal";
+import { UserType } from "@/lib/generated/prisma/enums";
 import { format } from "date-fns";
+import {
+  AlertCircle,
+  Building,
+  Calendar,
+  Clock,
+  DollarSign,
+  Globe,
+  Send,
+} from "lucide-react";
+import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import AcceptProposalModal from "./AcceptProposalModal";
+import CounterOfferForm from "./CounterOfferForm";
+import ProposalStatusBadge from "./ProposalStatusBadge";
+import { createClient } from "@/lib/supabase/client";
+import { stripHtmlTags } from "@/lib/html-utils";
 
 interface Proposal {
   id: string;
@@ -96,12 +84,10 @@ export default function ProposalDetail() {
   const proposalId = params.id as string;
 
   const [proposal, setProposal] = useState<Proposal | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showCounterForm, setShowCounterForm] = useState(false);
   const [showAcceptModal, setShowAcceptModal] = useState(false);
-  const [userType, setUserType] = useState<"brand" | "manufacturer" | null>(
-    null
-  );
+  const [userType, setUserType] = useState<UserType | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
@@ -112,17 +98,18 @@ export default function ProposalDetail() {
     try {
       const response = await fetch(`/api/proposals/${proposalId}`);
       const data = await response.json();
+      console.log(data, "brand/proposa/id");
 
-      if (data.success) {
-        setProposal(data.data);
+      if (data) {
+        setProposal(data);
         // Determine user type
-        const currentUser = await fetch("/api/auth/me").then((res) =>
-          res.json()
-        );
-        if (currentUser.id === data.data.brand.id) {
-          setUserType("brand");
-        } else if (currentUser.id === data.data.manufacturer.id) {
-          setUserType("manufacturer");
+        const supabase = await createClient();
+        const user = await supabase.auth.getUser();
+        console.log(user);
+        if (user.data.user?.id === data.brandId) {
+          setUserType("BRAND");
+        } else if (user.data.user?.id === data.manufacturerId) {
+          setUserType("MANUFACTURER");
         }
       }
     } catch (error) {
@@ -132,10 +119,15 @@ export default function ProposalDetail() {
     }
   };
 
+  // Replace the handleProposalAction function with this updated version:
+
   const handleProposalAction = async (action: string, data?: any) => {
     setActionLoading(true);
     try {
-      const response = await fetch(`/api/proposals/${proposalId}/${action}`, {
+      let endpoint = `/api/proposals/${proposalId}/${action}`;
+
+      // For counter offers, we need to send the counter data
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: data ? JSON.stringify(data) : undefined,
@@ -144,14 +136,30 @@ export default function ProposalDetail() {
       const result = await response.json();
 
       if (response.ok) {
+        // Close modals based on action
         if (action === "accept") {
           setShowAcceptModal(false);
         }
         if (action === "counter") {
           setShowCounterForm(false);
         }
+
         // Refresh proposal data
         fetchProposal();
+
+        // Show success message
+        const successMessages = {
+          accept: "Proposal accepted successfully!",
+          reject: "Proposal rejected successfully!",
+          withdraw: "Proposal withdrawn successfully!",
+          submit: "Proposal submitted successfully!",
+          counter: "Counter offer submitted successfully!",
+        };
+
+        alert(
+          successMessages[action as keyof typeof successMessages] ||
+            "Action completed successfully!"
+        );
       } else {
         alert(result.error || `Failed to ${action} proposal`);
       }
@@ -161,7 +169,6 @@ export default function ProposalDetail() {
       setActionLoading(false);
     }
   };
-
   const handleAccept = async (notes?: string) => {
     await handleProposalAction("accept", { notes });
   };
@@ -215,11 +222,11 @@ export default function ProposalDetail() {
   const priceDiff =
     ((proposal.price - proposal.brief.budget) / proposal.brief.budget) * 100;
   const canBrandAction =
-    userType === "brand" &&
+    userType === "BRAND" &&
     ["SUBMITTED", "UNDER_REVIEW", "NEGOTIATION"].includes(proposal.status);
   const canManufacturerAction =
-    userType === "manufacturer" && proposal.status === "DRAFT";
-
+    userType === "MANUFACTURER" && proposal.status === "DRAFT";
+  console.log(canBrandAction, "can brand");
   return (
     <div className="max-w-6xl mx-auto">
       {/* Header */}
@@ -287,7 +294,7 @@ export default function ProposalDetail() {
               )}
 
               {/* Withdraw action for manufacturer */}
-              {userType === "manufacturer" &&
+              {userType === "MANUFACTURER" &&
                 ["SUBMITTED", "UNDER_REVIEW"].includes(proposal.status) && (
                   <button
                     onClick={handleWithdraw}
@@ -387,7 +394,7 @@ export default function ProposalDetail() {
             </h2>
             <div className="prose prose-sm max-w-none">
               <p className="text-gray-700 whitespace-pre-line">
-                {proposal.message}
+                {stripHtmlTags(proposal.message)}
               </p>
             </div>
           </div>
@@ -526,8 +533,11 @@ export default function ProposalDetail() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <CounterOfferForm
             proposal={proposal}
-            onSuccess={() => setShowCounterForm(false)}
+            onSubmit={(counterData) =>
+              handleProposalAction("counter", counterData)
+            }
             onCancel={() => setShowCounterForm(false)}
+            isSubmitting={actionLoading}
           />
         </div>
       )}
@@ -537,7 +547,9 @@ export default function ProposalDetail() {
         <AcceptProposalModal
           proposal={proposal}
           onAccept={handleAccept}
-          onCancel={() => setShowAcceptModal(false)}
+          onClose={() => setShowAcceptModal(false)}
+          isOpen={showAcceptModal}
+          isProcessing={actionLoading}
         />
       )}
     </div>
